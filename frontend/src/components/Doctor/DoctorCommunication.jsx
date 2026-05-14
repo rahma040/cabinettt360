@@ -33,7 +33,9 @@ import {
   FaSearch,
   FaPlus,
   FaArrowLeft,
+  FaRobot,
 } from "react-icons/fa";
+import DoctorAssistantChat from "./DoctorAssistantChat";
 
 const API_BASE = "http://127.0.0.1:8000/api";
 
@@ -656,6 +658,7 @@ const DoctorCommunication = () => {
   const [loadingComms, setLoadingComms] = useState(true);
   const [selected, setSelected] = useState(null);
   const [view, setView] = useState("inbox");
+  const [section, setSection] = useState("messages");
   const [activeTab, setActiveTab] = useState("all");
   const [search, setSearch] = useState("");
 
@@ -978,13 +981,45 @@ const DoctorCommunication = () => {
               Communications
             </h2>
           </div>
-          <div className="flex items-center gap-3">
-            <button onClick={fetchCommunications}
-              style={{ width: 38, height: 38, borderRadius: 10, border: "1.5px solid #E0E8FF", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
-              title="Actualiser">
-              <FaSync size={13} style={{ color: "#64748B" }} />
-            </button>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: "1.5px solid #E0E8FF", borderRadius: 12, padding: "6px 12px" }}>
+            <div className="flex items-center gap-3 flex-wrap justify-end">
+              <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: "1.5px solid #E0E8FF", borderRadius: 999, padding: 4 }}>
+                <button
+                  onClick={() => setSection("messages")}
+                  style={{
+                    border: "none",
+                    borderRadius: 999,
+                    padding: "8px 14px",
+                    background: section === "messages" ? "linear-gradient(135deg, var(--accent), #2563EB)" : "transparent",
+                    color: section === "messages" ? "#fff" : "var(--text-2)",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  <FaEnvelope size={10} style={{ marginRight: 6 }} /> Messagerie
+                </button>
+                <button
+                  onClick={() => setSection("assistant")}
+                  style={{
+                    border: "none",
+                    borderRadius: 999,
+                    padding: "8px 14px",
+                    background: section === "assistant" ? "linear-gradient(135deg, #0F766E, #115E59)" : "transparent",
+                    color: section === "assistant" ? "#fff" : "var(--text-2)",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  <FaRobot size={10} style={{ marginRight: 6 }} /> Assistant IA
+                </button>
+              </div>
+              <button onClick={fetchCommunications}
+                style={{ width: 38, height: 38, borderRadius: 10, border: "1.5px solid #E0E8FF", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                title="Actualiser">
+                <FaSync size={13} style={{ color: "#64748B" }} />
+              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: "1.5px solid #E0E8FF", borderRadius: 12, padding: "6px 12px" }}>
               <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs db-logo-ring" style={{ fontWeight: 700, width: 28, height: 28, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {user?.name?.charAt(0) || "D"}
               </div>
@@ -995,616 +1030,320 @@ const DoctorCommunication = () => {
           </div>
         </div>
 
-        <div className="mail-shell mx-6 mb-6" style={{ height: "calc(100vh - 112px)" }}>
-          {!isMobile && (
-            <>
-              <div className="mail-list-pane">
-                <div className="mail-list-header">
-                  <button className="compose-btn" onClick={() => { setView("compose"); setSelected(null); }}>
-                    <FaEdit size={12} /> Nouveau message
-                  </button>
-                  <div className="tab-switch">
-                    <button
-                      className={`tab-btn ${activeTab === "all" ? "active" : ""}`}
-                      onClick={() => { setActiveTab("all"); setSelected(null); }}
-                    >
-                      <FaInbox size={10} /> Tous
-                    </button>
-                    <button
-                      className={`tab-btn ${activeTab === "sent" ? "active" : ""}`}
-                      onClick={() => { setActiveTab("sent"); setSelected(null); }}
-                    >
-                      <FaPaperPlane size={10} /> Envoyés
-                    </button>
-                    <button
-                      className={`tab-btn ${activeTab === "received" ? "active" : ""}`}
-                      onClick={() => { setActiveTab("received"); setSelected(null); }}
-                    >
-                      <FaEnvelope size={10} /> Reçus
-                    </button>
-                  </div>
-                  <div className="search-wrap">
-                    <FaSearch size={11} style={{ color: "#94A3B8" }} />
-                    <input
-                      type="text"
-                      placeholder="Rechercher par email..."
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div style={{ padding: "10px 16px 6px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 10.5, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-2)" }}>
-                    {activeTab === "all" && "Tous les messages"}
-                    {activeTab === "sent" && "Messages envoyés"}
-                    {activeTab === "received" && "Messages reçus"}
-                  </span>
-                  <span style={{ background: "#EEF4FF", color: "var(--accent)", borderRadius: 99, padding: "1px 8px", fontSize: 10, fontWeight: 800 }}>
-                    {filtered.length}
-                  </span>
-                </div>
-
-                <div className="msg-list">
-                  {loadingComms ? (
-                    <div style={{ display: "flex", justifyContent: "center", padding: "32px 0" }}>
-                      <div style={{ width: 28, height: 28, border: "2px solid #BFDBFE", borderTopColor: "var(--accent)", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-                    </div>
-                  ) : filtered.length === 0 ? (
-                    <div className="empty-list">
-                      <FaInbox size={28} style={{ color: "#C7D2FE", marginBottom: 8 }} />
-                      <p style={{ fontSize: 13, fontWeight: 600 }}>Aucun message</p>
-                      <p style={{ fontSize: 11.5 }}>
-                        {activeTab === "sent" && "Vous n'avez envoyé aucun message."}
-                        {activeTab === "received" && "Vous n'avez reçu aucun message."}
-                        {activeTab === "all" && "Cliquez sur « Nouveau message » pour commencer."}
-                      </p>
-                    </div>
-                  ) : (
-                    filtered.map((comm) => (
-                      <div
-                        key={comm.id}
-                        className={`msg-list-item ${selected?.id === comm.id ? "selected" : ""}`}
-                        onClick={() => { setSelected(comm); setView("inbox"); }}
-                      >
-                        <div className="msg-li-recipient">
-                          <FaAt size={9} style={{ opacity: 0.5 }} />
-                          {comm.direction === 'sent' ? `À : ${comm.other_party_email}` : `De : ${comm.other_party_email}`}
-                        </div>
-                        <div className="msg-li-preview">{comm.message}</div>
-                        <div className="msg-li-meta">
-                          <span className="msg-li-time">
-                            <FaRegClock size={9} style={{ marginRight: 3 }} />
-                            {formatShort(comm.created_at)}
-                          </span>
-                          {comm.file_path && comm.file_path.length > 0 && (
-                            <span className="msg-li-attach">
-                              <FaPaperclip size={8} /> {comm.file_path.length} fichier(s)
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              <div className="mail-detail-pane">
-                {view === "compose" && (
-                  <div className="compose-pane">
-                    <div className="compose-topbar">
-                      <div className="compose-title">
-                        <div style={{ width: 30, height: 30, borderRadius: 9, background: "linear-gradient(135deg,var(--accent),#2563EB)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          <FaPaperPlane size={12} style={{ color: "#fff" }} />
-                        </div>
-                        Nouveau message
-                      </div>
-                      <button
-                        onClick={() => setView("inbox")}
-                        style={{ width: 30, height: 30, borderRadius: 8, border: "1.5px solid #E0E8FF", background: "#F8FAFF", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
-                        title="Fermer"
-                      >
-                        <FaTimes size={12} style={{ color: "#94A3B8" }} />
+        {section === "messages" ? (
+            <div className="mail-shell mx-6 mb-6" style={{ height: "calc(100vh - 112px)" }}>
+              {!isMobile ? (
+                <>
+                  <div className="mail-list-pane">
+                    <div className="mail-list-header">
+                      <button className="compose-btn" onClick={() => { setView("compose"); setSelected(null); }}>
+                        <FaEdit size={12} /> Nouveau message
                       </button>
-                    </div>
-
-                    <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", flex: 1 }}>
-                      <div className="compose-body">
-                        <div className="field-group">
-                          <label>À (destinataire)</label>
-                          <div style={{ position: "relative" }}>
-                            <FaAt size={12} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#94A3B8" }} />
-                            <input
-                              type="email"
-                              required
-                              placeholder="adresse@exemple.com"
-                              value={recipientEmail}
-                              onChange={(e) => setRecipientEmail(e.target.value)}
-                              className="field-input"
-                              style={{ paddingLeft: 32 }}
-                            />
-                          </div>
-                        </div>
-
-                        <div style={{ borderTop: "1px solid #EEF1FF", margin: "0 -28px", padding: "0 28px" }} />
-
-                        <div className="field-group" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-                          <label>Message</label>
-                          <textarea
-                            required
-                            rows="10"
-                            placeholder="Rédigez votre message ici..."
-                            value={message}
-                            onChange={(e) => setMessage(e.target.value)}
-                            className="field-input"
-                            style={{ resize: "none", flex: 1, minHeight: 200 }}
-                          />
-                        </div>
-                      </div>
-
-                      <div style={{ padding: "0 28px", marginBottom: 10 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                          <input
-                            type="file"
-                            accept=".pdf"
-                            id="pdf-file-input"
-                            ref={fileInputRef}
-                            onChange={handleFileChange}
-                            multiple
-                            style={{ display: "none" }}
-                          />
-                          <label htmlFor="pdf-file-input" className="file-attach-label">
-                            <FaPlus size={10} /> Ajouter un PDF
-                          </label>
-                          {files.map((file, idx) => (
-                            <span key={idx} className="file-attached-chip">
-                              <FaFilePdf size={10} />
-                              {file.name}
-                              <button
-                                type="button"
-                                onClick={() => removeFile(idx)}
-                                style={{ background: "none", border: "none", cursor: "pointer", color: "#9F1239", padding: 0, marginLeft: 2 }}
-                              >
-                                <FaTimes size={9} />
-                              </button>
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      {submitSuccess && (
-                        <div className="toast-success">
-                          <FaCheckCircle size={14} /> Message envoyé avec succès !
-                        </div>
-                      )}
-                      {submitError && (
-                        <div className="toast-error">
-                          <FaExclamationCircle size={14} /> {submitError}
-                        </div>
-                      )}
-
-                      <div className="compose-footer">
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        </div>
-                        <button type="submit" disabled={submitting} className="send-btn">
-                          {submitting
-                            ? <><FaSpinner className="animate-spin" size={12} /> Envoi...</>
-                            : <><FaPaperPlane size={12} /> Envoyer</>
-                          }
+                      <div className="tab-switch">
+                        <button
+                          className={`tab-btn ${activeTab === "all" ? "active" : ""}`}
+                          onClick={() => { setActiveTab("all"); setSelected(null); }}
+                        >
+                          <FaInbox size={10} /> Tous
+                        </button>
+                        <button
+                          className={`tab-btn ${activeTab === "sent" ? "active" : ""}`}
+                          onClick={() => { setActiveTab("sent"); setSelected(null); }}
+                        >
+                          <FaPaperPlane size={10} /> Envoyés
+                        </button>
+                        <button
+                          className={`tab-btn ${activeTab === "received" ? "active" : ""}`}
+                          onClick={() => { setActiveTab("received"); setSelected(null); }}
+                        >
+                          <FaEnvelope size={10} /> Reçus
                         </button>
                       </div>
-                    </form>
-                  </div>
-                )}
-
-                {view === "inbox" && !selected && (
-                  <div className="empty-pane">
-                    <div className="empty-pane-icon">
-                      <FaEnvelope size={30} style={{ color: "#93C5FD" }} />
-                    </div>
-                    <p style={{ fontSize: "1rem", fontWeight: 800, color: "var(--text-1)", marginBottom: 6 }}>
-                      Aucun message sélectionné
-                    </p>
-                    <p style={{ fontSize: 13, color: "var(--text-2)", maxWidth: 260, lineHeight: 1.6 }}>
-                      Choisissez un message dans la liste ou composez-en un nouveau.
-                    </p>
-                    <button
-                      onClick={() => setView("compose")}
-                      className="send-btn"
-                      style={{ marginTop: 20 }}
-                    >
-                      <FaEdit size={12} /> Nouveau message
-                    </button>
-                  </div>
-                )}
-
-                {view === "inbox" && selected && (
-                  <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
-                    <div className="detail-header">
-                      <div className="detail-subject">
-                        {selected.direction === 'sent' ? (
-                          <>Message à {selected.other_party_email}</>
-                        ) : (
-                          <>Message de {selected.other_party_email}</>
-                        )}
-                      </div>
-                      <div className="detail-meta-row">
-                        <span className="detail-recipient">
-                          <FaAt size={10} /> {selected.direction === 'sent' ? `Destinataire : ${selected.other_party_email}` : `Expéditeur : ${selected.other_party_email}`}
-                        </span>
-                        <span className="detail-time">
-                          <FaRegClock size={10} />
-                          {formatDate(selected.created_at)}
-                        </span>
+                      <div className="search-wrap">
+                        <FaSearch size={11} style={{ color: "#94A3B8" }} />
+                        <input
+                          type="text"
+                          placeholder="Rechercher par email..."
+                          value={search}
+                          onChange={(e) => setSearch(e.target.value)}
+                        />
                       </div>
                     </div>
 
-                    <div className="detail-body">
-                      {selected.message}
+                    <div style={{ padding: "10px 16px 6px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <span style={{ fontSize: 10.5, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-2)" }}>
+                        {activeTab === "all" && "Tous les messages"}
+                        {activeTab === "sent" && "Messages envoyés"}
+                        {activeTab === "received" && "Messages reçus"}
+                      </span>
+                      <span style={{ background: "#EEF4FF", color: "var(--accent)", borderRadius: 99, padding: "1px 8px", fontSize: 10, fontWeight: 800 }}>
+                        {filtered.length}
+                      </span>
                     </div>
 
-                    {selected.file_path && selected.file_path.length > 0 && (
-                      <div className="detail-attachment-bar">
-                        <p className="attach-label">Pièces jointes ({selected.file_path.length})</p>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
-                          {selected.file_path.map((filePath, idx) => {
-                            const fileName = filePath.split("/").pop();
-                            const viewKey = `${selected.id}-${idx}-view`;
-                            const downloadKey = `${selected.id}-${idx}-download`;
-                            return (
-                              <div key={idx} className="attach-card">
-                                <div className="attach-card-icon">
-                                  <FaFilePdf size={16} style={{ color: "var(--rose)" }} />
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                  <div className="attach-card-name">
-                                    {fileName}
-                                  </div>
-                                  <div className="attach-card-type">Fichier PDF</div>
-                                </div>
-                                <div style={{ display: "flex", gap: 6 }}>
-                                  {pdfLoading[viewKey] ? (
-                                    <button className="pdf-action-btn pdf-loading-btn" disabled>
-                                      <FaSpinner className="animate-spin" size={10} /> Chargement...
-                                    </button>
-                                  ) : (
-                                    <button
-                                      className="pdf-action-btn pdf-view-btn"
-                                      onClick={() => fetchBlobAndAct(selected.id, idx, "view")}
-                                    >
-                                      <FaEye size={10} /> Voir
-                                    </button>
-                                  )}
-                                  {pdfLoading[downloadKey] ? (
-                                    <button className="pdf-action-btn pdf-loading-btn" disabled>
-                                      <FaSpinner className="animate-spin" size={10} /> ...
-                                    </button>
-                                  ) : (
-                                    <button
-                                      className="pdf-action-btn pdf-dl-btn"
-                                      onClick={() => fetchBlobAndAct(selected.id, idx, "download")}
-                                    >
-                                      <FaDownload size={10} /> Télécharger
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
+                    <div className="msg-list">
+                      {loadingComms ? (
+                        <div style={{ display: "flex", justifyContent: "center", padding: "32px 0" }}>
+                          <div style={{ width: 28, height: 28, border: "2px solid #BFDBFE", borderTopColor: "var(--accent)", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
                         </div>
+                      ) : filtered.length === 0 ? (
+                        <div className="empty-list">
+                          <FaInbox size={28} style={{ color: "#C7D2FE", marginBottom: 8 }} />
+                          <p style={{ fontSize: 13, fontWeight: 600 }}>Aucun message</p>
+                          <p style={{ fontSize: 11.5 }}>
+                            {activeTab === "sent" && "Vous n'avez envoyé aucun message."}
+                            {activeTab === "received" && "Vous n'avez reçu aucun message."}
+                            {activeTab === "all" && "Cliquez sur « Nouveau message » pour commencer."}
+                          </p>
+                        </div>
+                      ) : (
+                        filtered.map((comm) => (
+                          <div
+                            key={comm.id}
+                            className={`msg-list-item ${selected?.id === comm.id ? "selected" : ""}`}
+                            onClick={() => { setSelected(comm); setView("inbox"); }}
+                          >
+                            <div className="msg-li-recipient">
+                              <FaAt size={9} style={{ opacity: 0.5 }} />
+                              {comm.direction === 'sent' ? `À : ${comm.other_party_email}` : `De : ${comm.other_party_email}`}
+                            </div>
+                            <div className="msg-li-preview">{comm.message}</div>
+                            <div className="msg-li-meta">
+                              <span className="msg-li-time">
+                                <FaRegClock size={9} style={{ marginRight: 3 }} />
+                                {formatShort(comm.created_at)}
+                              </span>
+                              {comm.file_path && comm.file_path.length > 0 && (
+                                <span className="msg-li-attach">
+                                  <FaPaperclip size={8} /> {comm.file_path.length} fichier(s)
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mail-detail-pane">
+                    {view === "compose" && (
+                      <div className="compose-pane">
+                        <div className="compose-topbar">
+                          <div className="compose-title">
+                            <div style={{ width: 30, height: 30, borderRadius: 9, background: "linear-gradient(135deg,var(--accent),#2563EB)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <FaPaperPlane size={12} style={{ color: "#fff" }} />
+                            </div>
+                            Nouveau message
+                          </div>
+                          <button
+                            onClick={() => setView("inbox")}
+                            style={{ width: 30, height: 30, borderRadius: 8, border: "1.5px solid #E0E8FF", background: "#F8FAFF", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                            title="Fermer"
+                          >
+                            <FaTimes size={12} style={{ color: "#94A3B8" }} />
+                          </button>
+                        </div>
+
+                        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+                          <div className="compose-body">
+                            <div className="field-group">
+                              <label>À (destinataire)</label>
+                              <div style={{ position: "relative" }}>
+                                <FaAt size={12} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#94A3B8" }} />
+                                <input
+                                  type="email"
+                                  required
+                                  placeholder="adresse@exemple.com"
+                                  value={recipientEmail}
+                                  onChange={(e) => setRecipientEmail(e.target.value)}
+                                  className="field-input"
+                                  style={{ paddingLeft: 32 }}
+                                />
+                              </div>
+                            </div>
+
+                            <div style={{ borderTop: "1px solid #EEF1FF", margin: "0 -28px", padding: "0 28px" }} />
+
+                            <div className="field-group" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                              <label>Message</label>
+                              <textarea
+                                required
+                                rows="10"
+                                placeholder="Rédigez votre message ici..."
+                                value={message}
+                                onChange={(e) => setMessage(e.target.value)}
+                                className="field-input"
+                                style={{ resize: "none", flex: 1, minHeight: 200 }}
+                              />
+                            </div>
+                          </div>
+
+                          <div style={{ padding: "0 28px", marginBottom: 10 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                              <input
+                                type="file"
+                                accept=".pdf"
+                                id="pdf-file-input"
+                                ref={fileInputRef}
+                                onChange={handleFileChange}
+                                multiple
+                                style={{ display: "none" }}
+                              />
+                              <label htmlFor="pdf-file-input" className="file-attach-label">
+                                <FaPlus size={10} /> Ajouter un PDF
+                              </label>
+                              {files.map((file, idx) => (
+                                <span key={idx} className="file-attached-chip">
+                                  <FaFilePdf size={10} />
+                                  {file.name}
+                                  <button
+                                    type="button"
+                                    onClick={() => removeFile(idx)}
+                                    style={{ background: "none", border: "none", cursor: "pointer", color: "#9F1239", padding: 0, marginLeft: 2 }}
+                                  >
+                                    <FaTimes size={9} />
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+
+                          {submitSuccess && (
+                            <div className="toast-success">
+                              <FaCheckCircle size={14} /> Message envoyé avec succès !
+                            </div>
+                          )}
+                          {submitError && (
+                            <div className="toast-error">
+                              <FaExclamationCircle size={14} /> {submitError}
+                            </div>
+                          )}
+
+                          <div className="compose-footer">
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }} />
+                            <button type="submit" disabled={submitting} className="send-btn">
+                              {submitting
+                                ? <><FaSpinner className="animate-spin" size={12} /> Envoi...</>
+                                : <><FaPaperPlane size={12} /> Envoyer</>
+                              }
+                            </button>
+                          </div>
+                        </form>
                       </div>
                     )}
-                  </div>
-                )}
-              </div>
-            </>
-          )}
 
-          {isMobile && (
-            <>
-              {showListOnMobile() && (
-                <div className="mail-list-pane" style={{ height: "100%" }}>
-                  <div className="mail-list-header">
-                    <button className="compose-btn" onClick={() => { setView("compose"); setSelected(null); }}>
-                      <FaEdit size={12} /> Nouveau message
-                    </button>
-                    <div className="tab-switch">
-                      <button
-                        className={`tab-btn ${activeTab === "all" ? "active" : ""}`}
-                        onClick={() => { setActiveTab("all"); setSelected(null); }}
-                      >
-                        <FaInbox size={10} /> Tous
-                      </button>
-                      <button
-                        className={`tab-btn ${activeTab === "sent" ? "active" : ""}`}
-                        onClick={() => { setActiveTab("sent"); setSelected(null); }}
-                      >
-                        <FaPaperPlane size={10} /> Envoyés
-                      </button>
-                      <button
-                        className={`tab-btn ${activeTab === "received" ? "active" : ""}`}
-                        onClick={() => { setActiveTab("received"); setSelected(null); }}
-                      >
-                        <FaEnvelope size={10} /> Reçus
-                      </button>
-                    </div>
-                    <div className="search-wrap">
-                      <FaSearch size={11} style={{ color: "#94A3B8" }} />
-                      <input
-                        type="text"
-                        placeholder="Rechercher par email..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <div style={{ padding: "10px 16px 6px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: 10.5, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-2)" }}>
-                      {activeTab === "all" && "Tous les messages"}
-                      {activeTab === "sent" && "Messages envoyés"}
-                      {activeTab === "received" && "Messages reçus"}
-                    </span>
-                    <span style={{ background: "#EEF4FF", color: "var(--accent)", borderRadius: 99, padding: "1px 8px", fontSize: 10, fontWeight: 800 }}>
-                      {filtered.length}
-                    </span>
-                  </div>
-
-                  <div className="msg-list">
-                    {loadingComms ? (
-                      <div style={{ display: "flex", justifyContent: "center", padding: "32px 0" }}>
-                        <div style={{ width: 28, height: 28, border: "2px solid #BFDBFE", borderTopColor: "var(--accent)", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-                      </div>
-                    ) : filtered.length === 0 ? (
-                      <div className="empty-list">
-                        <FaInbox size={28} style={{ color: "#C7D2FE", marginBottom: 8 }} />
-                        <p style={{ fontSize: 13, fontWeight: 600 }}>Aucun message</p>
-                        <p style={{ fontSize: 11.5 }}>
-                          {activeTab === "sent" && "Vous n'avez envoyé aucun message."}
-                          {activeTab === "received" && "Vous n'avez reçu aucun message."}
-                          {activeTab === "all" && "Cliquez sur « Nouveau message » pour commencer."}
+                    {view === "inbox" && !selected && (
+                      <div className="empty-pane">
+                        <div className="empty-pane-icon">
+                          <FaEnvelope size={30} style={{ color: "#93C5FD" }} />
+                        </div>
+                        <p style={{ fontSize: "1rem", fontWeight: 800, color: "var(--text-1)", marginBottom: 6 }}>
+                          Aucun message sélectionné
                         </p>
-                      </div>
-                    ) : (
-                      filtered.map((comm) => (
-                        <div
-                          key={comm.id}
-                          className={`msg-list-item`}
-                          onClick={() => { setSelected(comm); setView("inbox"); }}
+                        <p style={{ fontSize: 13, color: "var(--text-2)", maxWidth: 260, lineHeight: 1.6 }}>
+                          Choisissez un message dans la liste ou composez-en un nouveau.
+                        </p>
+                        <button
+                          onClick={() => setView("compose")}
+                          className="send-btn"
+                          style={{ marginTop: 20 }}
                         >
-                          <div className="msg-li-recipient">
-                            <FaAt size={9} style={{ opacity: 0.5 }} />
-                            {comm.direction === 'sent' ? `À : ${comm.other_party_email}` : `De : ${comm.other_party_email}`}
-                          </div>
-                          <div className="msg-li-preview">{comm.message}</div>
-                          <div className="msg-li-meta">
-                            <span className="msg-li-time">
-                              <FaRegClock size={9} style={{ marginRight: 3 }} />
-                              {formatShort(comm.created_at)}
-                            </span>
-                            {comm.file_path && comm.file_path.length > 0 && (
-                              <span className="msg-li-attach">
-                                <FaPaperclip size={8} /> {comm.file_path.length} fichier(s)
-                              </span>
+                          <FaEdit size={12} /> Nouveau message
+                        </button>
+                      </div>
+                    )}
+
+                    {view === "inbox" && selected && (
+                      <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+                        <div className="detail-header">
+                          <div className="detail-subject">
+                            {selected.direction === 'sent' ? (
+                              <>Message à {selected.other_party_email}</>
+                            ) : (
+                              <>Message de {selected.other_party_email}</>
                             )}
                           </div>
+                          <div className="detail-meta-row">
+                            <span className="detail-recipient">
+                              <FaAt size={10} /> {selected.direction === 'sent' ? `Destinataire : ${selected.other_party_email}` : `Expéditeur : ${selected.other_party_email}`}
+                            </span>
+                            <span className="detail-time">
+                              <FaRegClock size={10} />
+                              {formatDate(selected.created_at)}
+                            </span>
+                          </div>
                         </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
 
-              {showDetailOnMobile() && selected && (
-                <div className="mail-detail-pane" style={{ height: "100%" }}>
-                  <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-                    <div className="detail-header" style={{ position: "relative" }}>
-                      <button
-                        onClick={goBackToList}
-                        style={{
-                          position: "absolute",
-                          left: "16px",
-                          top: "20px",
-                          background: "#F8FAFF",
-                          border: "1.5px solid #E0E8FF",
-                          borderRadius: "8px",
-                          width: "32px",
-                          height: "32px",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          cursor: "pointer",
-                          zIndex: 10,
-                        }}
-                      >
-                        <FaArrowLeft size={12} style={{ color: "#64748B" }} />
-                      </button>
-                      <div className="detail-subject" style={{ marginLeft: "40px" }}>
-                        {selected.direction === 'sent' ? (
-                          <>Message à {selected.other_party_email}</>
-                        ) : (
-                          <>Message de {selected.other_party_email}</>
+                        <div className="detail-body">
+                          {selected.message}
+                        </div>
+
+                        {selected.file_path && selected.file_path.length > 0 && (
+                          <div className="detail-attachment-bar">
+                            <p className="attach-label">Pièces jointes ({selected.file_path.length})</p>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+                              {selected.file_path.map((filePath, idx) => {
+                                const fileName = filePath.split("/").pop();
+                                const viewKey = `${selected.id}-${idx}-view`;
+                                const downloadKey = `${selected.id}-${idx}-download`;
+                                return (
+                                  <div key={idx} className="attach-card">
+                                    <div className="attach-card-icon">
+                                      <FaFilePdf size={16} style={{ color: "var(--rose)" }} />
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                      <div className="attach-card-name">
+                                        {fileName}
+                                      </div>
+                                      <div className="attach-card-type">Fichier PDF</div>
+                                    </div>
+                                    <div style={{ display: "flex", gap: 6 }}>
+                                      {pdfLoading[viewKey] ? (
+                                        <button className="pdf-action-btn pdf-loading-btn" disabled>
+                                          <FaSpinner className="animate-spin" size={10} /> Chargement...
+                                        </button>
+                                      ) : (
+                                        <button
+                                          className="pdf-action-btn pdf-view-btn"
+                                          onClick={() => fetchBlobAndAct(selected.id, idx, "view")}
+                                        >
+                                          <FaEye size={10} /> Voir
+                                        </button>
+                                      )}
+                                      {pdfLoading[downloadKey] ? (
+                                        <button className="pdf-action-btn pdf-loading-btn" disabled>
+                                          <FaSpinner className="animate-spin" size={10} /> ...
+                                        </button>
+                                      ) : (
+                                        <button
+                                          className="pdf-action-btn pdf-dl-btn"
+                                          onClick={() => fetchBlobAndAct(selected.id, idx, "download")}
+                                        >
+                                          <FaDownload size={10} /> Télécharger
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
                         )}
                       </div>
-                      <div className="detail-meta-row">
-                        <span className="detail-recipient">
-                          <FaAt size={10} /> {selected.direction === 'sent' ? `Destinataire : ${selected.other_party_email}` : `Expéditeur : ${selected.other_party_email}`}
-                        </span>
-                        <span className="detail-time">
-                          <FaRegClock size={10} />
-                          {formatDate(selected.created_at)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="detail-body">
-                      {selected.message}
-                    </div>
-
-                    {selected.file_path && selected.file_path.length > 0 && (
-                      <div className="detail-attachment-bar">
-                        <p className="attach-label">Pièces jointes ({selected.file_path.length})</p>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
-                          {selected.file_path.map((filePath, idx) => {
-                            const fileName = filePath.split("/").pop();
-                            const viewKey = `${selected.id}-${idx}-view`;
-                            const downloadKey = `${selected.id}-${idx}-download`;
-                            return (
-                              <div key={idx} className="attach-card">
-                                <div className="attach-card-icon">
-                                  <FaFilePdf size={16} style={{ color: "var(--rose)" }} />
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                  <div className="attach-card-name">
-                                    {fileName}
-                                  </div>
-                                  <div className="attach-card-type">Fichier PDF</div>
-                                </div>
-                                <div style={{ display: "flex", gap: 6 }}>
-                                  {pdfLoading[viewKey] ? (
-                                    <button className="pdf-action-btn pdf-loading-btn" disabled>
-                                      <FaSpinner className="animate-spin" size={10} /> Chargement...
-                                    </button>
-                                  ) : (
-                                    <button
-                                      className="pdf-action-btn pdf-view-btn"
-                                      onClick={() => fetchBlobAndAct(selected.id, idx, "view")}
-                                    >
-                                      <FaEye size={10} /> Voir
-                                    </button>
-                                  )}
-                                  {pdfLoading[downloadKey] ? (
-                                    <button className="pdf-action-btn pdf-loading-btn" disabled>
-                                      <FaSpinner className="animate-spin" size={10} /> ...
-                                    </button>
-                                  ) : (
-                                    <button
-                                      className="pdf-action-btn pdf-dl-btn"
-                                      onClick={() => fetchBlobAndAct(selected.id, idx, "download")}
-                                    >
-                                      <FaDownload size={10} /> Télécharger
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
                     )}
                   </div>
+                </>
+              ) : (
+                <div className="mx-6 mb-6" style={{ height: "calc(100vh - 112px)" }}>
+                  <DoctorAssistantChat />
                 </div>
               )}
-
-              {showComposeOnMobile() && (
-                <div className="compose-pane" style={{ height: "100%" }}>
-                  <div className="compose-topbar">
-                    <div className="compose-title">
-                      <div style={{ width: 30, height: 30, borderRadius: 9, background: "linear-gradient(135deg,var(--accent),#2563EB)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <FaPaperPlane size={12} style={{ color: "#fff" }} />
-                      </div>
-                      Nouveau message
-                    </div>
-                    <button
-                      onClick={() => setView("inbox")}
-                      style={{ width: 30, height: 30, borderRadius: 8, border: "1.5px solid #E0E8FF", background: "#F8FAFF", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
-                      title="Fermer"
-                    >
-                      <FaTimes size={12} style={{ color: "#94A3B8" }} />
-                    </button>
-                  </div>
-
-                  <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", flex: 1 }}>
-                    <div className="compose-body">
-                      <div className="field-group">
-                        <label>À (destinataire)</label>
-                        <div style={{ position: "relative" }}>
-                          <FaAt size={12} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#94A3B8" }} />
-                          <input
-                            type="email"
-                            required
-                            placeholder="adresse@exemple.com"
-                            value={recipientEmail}
-                            onChange={(e) => setRecipientEmail(e.target.value)}
-                            className="field-input"
-                            style={{ paddingLeft: 32 }}
-                          />
-                        </div>
-                      </div>
-
-                      <div style={{ borderTop: "1px solid #EEF1FF", margin: "0 -28px", padding: "0 28px" }} />
-
-                      <div className="field-group" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-                        <label>Message</label>
-                        <textarea
-                          required
-                          rows="10"
-                          placeholder="Rédigez votre message ici..."
-                          value={message}
-                          onChange={(e) => setMessage(e.target.value)}
-                          className="field-input"
-                          style={{ resize: "none", flex: 1, minHeight: 200 }}
-                        />
-                      </div>
-                    </div>
-
-                    <div style={{ padding: "0 28px", marginBottom: 10 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                        <input
-                          type="file"
-                          accept=".pdf"
-                          id="pdf-file-input-mobile"
-                          ref={fileInputRef}
-                          onChange={handleFileChange}
-                          multiple
-                          style={{ display: "none" }}
-                        />
-                        <label htmlFor="pdf-file-input-mobile" className="file-attach-label">
-                          <FaPlus size={10} /> Ajouter un PDF
-                        </label>
-                        {files.map((file, idx) => (
-                          <span key={idx} className="file-attached-chip">
-                            <FaFilePdf size={10} />
-                            {file.name}
-                            <button
-                              type="button"
-                              onClick={() => removeFile(idx)}
-                              style={{ background: "none", border: "none", cursor: "pointer", color: "#9F1239", padding: 0, marginLeft: 2 }}
-                            >
-                              <FaTimes size={9} />
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    {submitSuccess && (
-                      <div className="toast-success">
-                        <FaCheckCircle size={14} /> Message envoyé avec succès !
-                      </div>
-                    )}
-                    {submitError && (
-                      <div className="toast-error">
-                        <FaExclamationCircle size={14} /> {submitError}
-                      </div>
-                    )}
-
-                    <div className="compose-footer">
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      </div>
-                      <button type="submit" disabled={submitting} className="send-btn">
-                        {submitting
-                          ? <><FaSpinner className="animate-spin" size={12} /> Envoi...</>
-                          : <><FaPaperPlane size={12} /> Envoyer</>
-                        }
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              )}
-            </>
+            </div>
+          ) : (
+            <div className="mx-6 mb-6" style={{ height: "calc(100vh - 112px)" }}>
+              <DoctorAssistantChat />
+            </div>
           )}
-        </div>
       </main>
     </div>
   );

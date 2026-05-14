@@ -725,7 +725,6 @@ function SecDashboard() {
                   </span>
                 )}
               </button>
-              </button>
               <div
                 className="flex items-center gap-2.5 px-3 py-2 rounded-xl"
                 style={{ background: "#fff", border: "1.5px solid var(--border)" }}

@@ -13,6 +13,7 @@ use App\Http\Controllers\StatisticsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DoctorTaskController;
 use App\Http\Controllers\CommunicationController;
+use App\Http\Controllers\DoctorAssistantController;
 use App\Http\Controllers\PasswordResetController;
 
 // Public routes
@@ -141,6 +142,11 @@ Route::middleware(['jwt.auth'])->group(function () {
         Route::post('/communications', [CommunicationController::class, 'store']);
         Route::get('/communications/{id}/download/{index?}', [CommunicationController::class, 'download']);
         Route::get('/communications/{id}/view/{index?}', [CommunicationController::class, 'view']);
+    });
+
+    // Doctor AI assistant
+    Route::middleware(['jwt.auth', 'role:medecin'])->prefix('doctor/assistant')->group(function () {
+        Route::post('/chat', [DoctorAssistantController::class, 'chat']);
     });
 
     // Admin routes
