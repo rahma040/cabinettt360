@@ -109,8 +109,17 @@ const G = `
   .sec-card { background:#fff; border-radius:20px; border:1.5px solid var(--border); transition:all .2s ease; }
   .sec-card:hover { border-color:rgba(59,126,248,.22); box-shadow:0 8px 28px rgba(59,126,248,.07); }
 
-  .data-row { border:1.5px solid #E8EEFF; border-radius:14px; background:#FAFBFF; transition:all .2s ease; }
-  .data-row:hover { border-color:rgba(59,126,248,.22); background:#F0F4FF; transform:translateX(3px); }
+  .btn-ghost {
+    border:1.5px solid #E2E8F0;
+    color:#64748B;
+    background:#fff;
+    transition:all .18s ease;
+    border-radius:12px;
+  }
+  .btn-ghost:hover { background:#F8FAFF; border-color:rgba(59,126,248,.3); color:var(--accent); }
+
+  .err-banner { background:#FFF1F2; border:1.5px solid #FECDD3; color:#9F1239; border-radius:14px; }
+  .sec-divider { border:none; border-top:1.5px solid #F0EEFF; margin:0 0 16px 0; }
 
   ::-webkit-scrollbar { width:5px; }
   ::-webkit-scrollbar-track { background:transparent; }
@@ -162,15 +171,19 @@ const performIntegrityCheck = async (navigate, setError, isInitial = false) => {
       }
     }
   } catch (err) {
-    console.error("Integrity check failed", err);
-    clearAndRedirect(navigate);
+    if (err.response && err.response.status === 401) {
+      console.error("Integrity check failed", err);
+      clearAndRedirect(navigate);
+      return;
+    }
+    console.warn("Integrity check network error, skipping redirect", err);
   }
 };
 
-function DoctorSecretaries() {
+function DoctorPatientsAccounts() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
-  const [secretaries, setSecretaries] = useState([]);
+  const [patients, setPatients] = useState([]);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -184,20 +197,33 @@ function DoctorSecretaries() {
 
   const integrityInterval = useRef(null);
 
-  const navItems = [
-    { to: "/docdb", icon: <FaHome />, label: "Tableau de bord" },
-    { to: "/patients", icon: <FaUserInjured />, label: "Patients" },
-    { to: "/createpatient", icon: <FaUserPlus />, label: "Comptes patients" },
-    { to: "/prescription", icon: <FaFileMedical />, label: "Ordonnance" },
-    { to: "/rendezvous", icon: <FaCalendarCheck />, label: "Rendez-vous" },
-    { to: "/docwaiting", icon: <FaUserClock />, label: "Salle d'attente" },
-    { to: "/createsec", icon: <FaUserPlus />, label: "Secrétaire", active: true  },
-    { to: "/docstats", icon: <FaChartLine />, label: "Statistiques" },
-    { to: "/doctasks", icon: <FaTasks />, label: "Tâches" },
-    { to: "/docmail", icon: <FaEnvelope />, label: "Communication"},
-    { to: "/doctuto", icon: <FaGraduationCap />, label: "Tutoriel" },
-    { to: "/docsettings", icon: <FaCog />, label: "Paramètres" },
-  ];
+  const isSecretary = user?.role === "secretaire";
+
+  const navItems = isSecretary
+    ? [
+        { to: "/secretariatdb", icon: <FaHome />, label: "Tableau de bord" },
+        { to: "/secpatients", icon: <FaUserInjured />, label: "Patients" },
+        { to: "/seccreatepatient", icon: <FaUserPlus />, label: "Comptes patients", active: true },
+        { to: "/secretaryRendezvous", icon: <FaCalendarCheck />, label: "Rendez-vous" },
+        { to: "/sectasks", icon: <FaTasks />, label: "Tâches" },
+        { to: "/secwaiting", icon: <FaUserClock />, label: "Salle d'attente" },
+        { to: "/secpay", icon: <FaFileMedical />, label: "Paiements" },
+        { to: "/secmail", icon: <FaEnvelope />, label: "Messagerie" },
+        { to: "/secsettings", icon: <FaCog />, label: "Paramètres" },
+      ]
+    : [
+        { to: "/docdb", icon: <FaHome />, label: "Tableau de bord" },
+        { to: "/patients", icon: <FaUserInjured />, label: "Patients" },
+        { to: "/prescription", icon: <FaFileMedical />, label: "Ordonnance" },
+        { to: "/rendezvous", icon: <FaCalendarCheck />, label: "Rendez-vous" },
+        { to: "/docwaiting", icon: <FaUserClock />, label: "Salle d'attente" },
+        { to: "/createpatient", icon: <FaUserPlus />, label: "Comptes patients", active: true },
+        { to: "/docstats", icon: <FaChartLine />, label: "Statistiques" },
+        { to: "/doctasks", icon: <FaTasks />, label: "Tâches" },
+        { to: "/docmail", icon: <FaEnvelope />, label: "Communication" },
+        { to: "/doctuto", icon: <FaGraduationCap />, label: "Tutoriel" },
+        { to: "/docsettings", icon: <FaCog />, label: "Paramètres" },
+      ];
 
   useEffect(() => {
     AOS.init({ duration: 800, once: true });
@@ -211,7 +237,7 @@ function DoctorSecretaries() {
     }
 
     const parsedUser = JSON.parse(userData);
-    if (parsedUser.role !== "medecin") {
+    if (!["medecin", "secretaire"].includes(parsedUser.role)) {
       navigate("/dashboard");
       return;
     }
@@ -220,7 +246,7 @@ function DoctorSecretaries() {
 
     performIntegrityCheck(navigate, setError, true)
       .then(() => {
-        fetchSecretaries(token);
+        fetchPatients(token);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -242,17 +268,17 @@ function DoctorSecretaries() {
     };
   }, [navigate]);
 
-  const fetchSecretaries = async (token) => {
+  const fetchPatients = async (token) => {
     try {
-      const response = await fetch(`${API_BASE}/doctor/secretaries`, {
+      const response = await fetch(`${API_BASE}/doctor/patients-users`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error(`Erreur ${response.status}`);
       const data = await response.json();
-      setSecretaries(data);
+      setPatients(data);
     } catch (err) {
       console.error(err);
-      setError("Impossible de charger la liste des secrétaires.");
+      setError("Impossible de charger la liste des comptes patients.");
     }
   };
 
@@ -269,7 +295,7 @@ function DoctorSecretaries() {
     const token = localStorage.getItem("token");
 
     try {
-      const response = await fetch(`${API_BASE}/doctor/secretaries`, {
+      const response = await fetch(`${API_BASE}/doctor/patients-users`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -289,9 +315,9 @@ function DoctorSecretaries() {
         }
       }
 
-      setSuccess("Secrétaire créé avec succès !");
+      setSuccess("Compte patient créé avec succès !");
       setFormData({ name: "", email: "", password: "" });
-      fetchSecretaries(token);
+      fetchPatients(token);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -303,7 +329,7 @@ function DoctorSecretaries() {
     const token = localStorage.getItem("token");
 
     try {
-      const response = await fetch(`${API_BASE}/doctor/secretaries/${id}`, {
+      const response = await fetch(`${API_BASE}/doctor/patients-users/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -313,8 +339,8 @@ function DoctorSecretaries() {
         throw new Error(data.error || "Erreur lors de la suppression");
       }
 
-      setSecretaries(secretaries.filter((sec) => sec.id !== id));
-      setSuccess("Secrétaire supprimé.");
+      setPatients(patients.filter((p) => p.id !== id));
+      setSuccess("Compte patient supprimé.");
     } catch (err) {
       setError(err.message);
     }
@@ -350,7 +376,7 @@ function DoctorSecretaries() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "var(--surface)" }}>
+    <div className="flex h-screen overflow-hidden" style={{ background: "linear-gradient(180deg,#EEF4FF 0%,#F8FBFF 42%,#FFFFFF 100%)" }}>
       <style>{G}</style>
       <FontInjector />
 
@@ -376,7 +402,7 @@ function DoctorSecretaries() {
                 Cabi Doc
               </h1>
               <p className="text-xs" style={{ color: "rgba(255,255,255,.38)" }}>
-                Espace médecin
+                Espace médecin / secrétariat
               </p>
             </div>
           </div>
@@ -412,10 +438,10 @@ function DoctorSecretaries() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-white text-sm truncate" style={{ fontWeight: 600 }}>
-                Dr. {user?.name || "Médecin"}
+                {user?.role === 'medecin' ? `Dr. ${user?.name}` : user?.name}
               </p>
               <p className="text-xs" style={{ color: "rgba(255,255,255,.38)" }}>
-                Médecin
+                {user?.role === 'medecin' ? 'Médecin' : 'Secrétaire'}
               </p>
             </div>
           </div>
@@ -442,20 +468,11 @@ function DoctorSecretaries() {
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-8">
             <div>
               <div className="flex items-center gap-3 mb-1">
-                <div
-                  className="w-8 h-8 rounded-xl flex items-center justify-center text-white"
-                  style={{
-                    background: "linear-gradient(135deg,var(--accent),#2563EB)",
-                    boxShadow: "0 4px 14px rgba(59,126,248,.35)",
-                  }}
-                >
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg,var(--accent),#2563EB)" }}>
                   <FaUserPlus size={14} />
                 </div>
-                <h2
-                  className="text-2xl"
-                  style={{ fontWeight: 800, color: "var(--text-1)", letterSpacing: "-0.03em" }}
-                >
-                  Gestion des secrétaires
+                <h2 className="text-2xl" style={{ fontWeight: 800, color: "var(--text-1)", letterSpacing: "-0.03em" }}>
+                  Gestion des comptes patients
                 </h2>
               </div>
               <p className="text-sm ml-11 capitalize" style={{ color: "var(--text-2)" }}>
@@ -470,7 +487,7 @@ function DoctorSecretaries() {
 
             <div className="mt-4 sm:mt-0 flex items-center gap-3">
               <button
-                onClick={() => fetchSecretaries(localStorage.getItem("token"))}
+                onClick={() => fetchPatients(localStorage.getItem("token"))}
                 className="w-10 h-10 rounded-xl flex items-center justify-center btn-ghost"
                 title="Actualiser"
               >
@@ -487,7 +504,7 @@ function DoctorSecretaries() {
                   {user?.name?.charAt(0) || "D"}
                 </div>
                 <span className="hidden sm:inline text-sm" style={{ fontWeight: 600, color: "var(--text-1)" }}>
-                  Dr. {user?.name || "Médecin"}
+                  {user?.role === 'medecin' ? `Dr. ${user?.name}` : user?.name}
                 </span>
               </div>
             </div>
@@ -514,7 +531,7 @@ function DoctorSecretaries() {
                 <FaUserPlus size={14} style={{ color: "var(--accent)" }} />
               </div>
               <p className="font-700 text-sm" style={{ fontWeight: 700, color: "var(--text-1)" }}>
-                Ajouter un nouveau secrétaire
+                Ajouter un nouveau compte patient
               </p>
             </div>
             <hr className="sec-divider" style={{ border: "none", borderTop: "1.5px solid #F0EEFF", margin: "0 0 20px 0" }} />
@@ -547,7 +564,7 @@ function DoctorSecretaries() {
                   required
                   className="w-full px-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-200"
                   style={{ border: "1.5px solid var(--border)", background: "#fff" }}
-                  placeholder="jean.dupont@exemple.com"
+                  placeholder="patient@example.com"
                 />
               </div>
               <div>
@@ -575,7 +592,7 @@ function DoctorSecretaries() {
                   className="px-6 py-2.5 rounded-xl text-white font-medium transition disabled:opacity-50"
                   style={{ background: "linear-gradient(135deg,var(--accent),#2563EB)" }}
                 >
-                  {submitting ? "Création..." : "Créer le compte secrétaire"}
+                  {submitting ? "Création..." : "Créer le compte patient"}
                 </button>
               </div>
             </form>
@@ -587,16 +604,16 @@ function DoctorSecretaries() {
                 <FaUsers size={14} style={{ color: "#059669" }} />
               </div>
               <p className="font-700 text-sm" style={{ fontWeight: 700, color: "var(--text-1)" }}>
-                Mes secrétaires ({secretaries.length})
+                Mes comptes patients ({patients.length})
               </p>
             </div>
             <hr className="sec-divider" style={{ border: "none", borderTop: "1.5px solid #F0EEFF", margin: "0 0 20px 0" }} />
 
-            {secretaries.length === 0 ? (
+            {patients.length === 0 ? (
               <div className="flex flex-col items-center justify-center text-center py-10">
                 <FaUsers size={32} style={{ color: "#DDD6FE" }} />
                 <p className="text-sm mt-3" style={{ color: "var(--text-2)" }}>
-                  Vous n'avez pas encore de secrétaire.
+                  Vous n'avez pas encore de comptes patients.
                 </p>
               </div>
             ) : (
@@ -611,16 +628,16 @@ function DoctorSecretaries() {
                     </tr>
                   </thead>
                   <tbody>
-                    {secretaries.map((sec) => (
-                      <tr key={sec.id} className="border-b hover:bg-gray-50 transition" style={{ borderColor: "var(--border)" }}>
-                        <td className="py-3 font-medium" style={{ color: "var(--text-1)" }}>{sec.name}</td>
-                        <td className="py-3" style={{ color: "var(--text-2)" }}>{sec.email}</td>
+                    {patients.map((p) => (
+                      <tr key={p.id} className="border-b hover:bg-gray-50 transition" style={{ borderColor: "var(--border)" }}>
+                        <td className="py-3 font-medium" style={{ color: "var(--text-1)" }}>{p.name}</td>
+                        <td className="py-3" style={{ color: "var(--text-2)" }}>{p.email}</td>
                         <td className="py-3" style={{ color: "var(--text-2)" }}>
-                          {new Date(sec.created_at).toLocaleDateString("fr-FR")}
+                          {new Date(p.created_at).toLocaleDateString("fr-FR")}
                         </td>
                         <td className="py-3">
                           <button
-                            onClick={() => handleDelete(sec.id)}
+                            onClick={() => handleDelete(p.id)}
                             className="text-red-600 hover:text-red-800 transition p-1"
                             title="Supprimer"
                           >
@@ -640,4 +657,4 @@ function DoctorSecretaries() {
   );
 }
 
-export default DoctorSecretaries;
+export default DoctorPatientsAccounts;

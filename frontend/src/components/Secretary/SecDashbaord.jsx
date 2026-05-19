@@ -13,6 +13,7 @@ import {
   FaClipboardList,
   FaClock,
   FaPhone,
+  FaUserPlus,
   FaEnvelope,
   FaExclamationCircle,
   FaBars,
@@ -262,6 +263,8 @@ function SecDashboard() {
   const [selectedDate, setSelectedDate] = useState(toYMD(new Date()));
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+  const [messageNotifications, setMessageNotifications] = useState([]);
 
   const getToken = () => localStorage.getItem("token");
   const getStoredUser = () => {
@@ -350,6 +353,20 @@ function SecDashboard() {
     }
   };
 
+  const fetchMessageNotifications = async () => {
+    try {
+      const [countRes, notifRes] = await Promise.all([
+        api.get("/communications/unread-count"),
+        api.get("/communications/notifications"),
+      ]);
+
+      setUnreadMessageCount(countRes.data?.count || 0);
+      setMessageNotifications(Array.isArray(notifRes.data) ? notifRes.data : []);
+    } catch (error) {
+      console.error("Error fetching communication notifications:", error);
+    }
+  };
+
   const fetchDashboardData = async () => {
     const token = getToken();
     if (!token) {
@@ -366,6 +383,7 @@ function SecDashboard() {
         fetchTasks(token),
         fetchCurrentUser(token),
         fetchPendingRequests(token),
+        fetchMessageNotifications(),
       ]);
     } catch (err) {
       setError("Impossible de charger les données. Vérifiez votre connexion.");
@@ -560,18 +578,22 @@ function SecDashboard() {
 
   const quickActions = [
     { to: "/secretaryRendezvous", icon: <FaCalendarCheck size={18} style={{ color: "#1E40AF" }} />, bg: "#EEF4FF", label: "Nouveau RDV" },
+    { to: "/seccreatepatient", icon: <FaUserPlus size={18} style={{ color: "#059669" }} />, bg: "#ECFDF5", label: "Comptes patients" },
     { to: "/sectasks", icon: <FaClipboardList size={18} style={{ color: "#059669" }} />, bg: "#ECFDF5", label: "Taches" },
     { to: "/secwaiting", icon: <FaUserClock  size={18} style={{ color: "#D97706" }} />, bg: "#FFFBEB", label: "Salle d'attente" },
     { to: "/secpay", icon: <FaMoneyBillWave size={18} style={{ color: "#5B21B6" }} />, bg: "#EEE8FF", label: "Paiements" },
+    { to: "/secmail", icon: <FaEnvelope size={18} style={{ color: "#5B21B6" }} />, bg: "#EEE8FF", label: "Messagerie" },
   ];
 
   const navItems = [
     { to: "/secretariatdb", icon: <FaHome />, label: "Tableau de bord", active: true },
     { to: "/secpatients", icon: <FaUserInjured />, label: "Patients" },
+    { to: "/seccreatepatient", icon: <FaUserPlus />, label: "Comptes patients" },
     { to: "/secretaryRendezvous", icon: <FaCalendarCheck />, label: "Rendez-vous" },
     { to: "/sectasks", icon: <FaClipboardList />, label: "Tâches" },
     { to: "/secwaiting", icon: <FaUserClock />, label: "Salle d'attente" },
     { to: "/secpay", icon: <FaMoneyBillWave />, label: "Paiements" },
+    { to: "/secmail", icon: <FaEnvelope />, label: "Messagerie" },
     { to: "/secsettings", icon: <FaCog />, label: "Paramètres" },
   ];
 
@@ -716,12 +738,12 @@ function SecDashboard() {
                 title="Notifications"
               >
                 <FaBell size={13} style={{ color: "#64748B" }} />
-                {pendingRequestsCount > 0 && (
+                {pendingRequestsCount + unreadMessageCount > 0 && (
                   <span
                     className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold text-white"
                     style={{ background: "linear-gradient(135deg, #EF4444, #DC2626)" }}
                   >
-                    {pendingRequestsCount}
+                    {pendingRequestsCount + unreadMessageCount}
                   </span>
                 )}
               </button>
@@ -975,7 +997,11 @@ function SecDashboard() {
           onActionComplete={() => {
             fetchPendingRequests(getToken());
             fetchAppointments(getToken());
+            fetchMessageNotifications();
           }}
+          messageNotifications={messageNotifications}
+          unreadMessageCount={unreadMessageCount}
+          onOpenMessages={() => navigate("/secmail")}
         />
       </main>
     </div>

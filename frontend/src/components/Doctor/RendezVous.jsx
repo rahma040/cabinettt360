@@ -19,11 +19,17 @@ import {
   FaStethoscope,
   FaNotesMedical,
   FaCalendarAlt,
+  FaSearch,
+  FaChevronCircleDown,
+  FaPhone,
+  FaExclamationTriangle,
+  FaSpinner,
   FaChevronDown,
   FaChevronUp,
   FaUserClock,
   FaFileMedical,
   FaUserPlus,
+  FaPlus,
   FaSync,
   FaExclamationCircle,
   FaChartLine,
@@ -164,6 +170,19 @@ const getWeekDates = (date) => {
   });
 };
 
+const getMonthDates = (date) => {
+  const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+  const startDay = firstDay.getDay();
+  const calendarStart = new Date(firstDay);
+  calendarStart.setDate(firstDay.getDate() - (startDay === 0 ? 6 : startDay - 1));
+
+  return Array.from({ length: 42 }, (_, i) => {
+    const d = new Date(calendarStart);
+    d.setDate(calendarStart.getDate() + i);
+    return d;
+  });
+};
+
 const isToday = (date) => {
   const t = new Date();
   return (
@@ -229,6 +248,18 @@ function RendezVous() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [appointments, setAppointments] = useState([]);
+  const [patients, setPatients] = useState([]);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [patientDropdownOpen, setPatientDropdownOpen] = useState(false);
+  const [patientSearchTerm, setPatientSearchTerm] = useState("");
+  const [formData, setFormData] = useState({ patient_id: "", appointment_date: "", start_time: "", end_time: "", notes: "", status: "scheduled" });
+  const [newPatientName, setNewPatientName] = useState("");
+  const [newPatientPhone, setNewPatientPhone] = useState("");
+  const [existingPatientWarning, setExistingPatientWarning] = useState(null);
+  const [selectedPatientName, setSelectedPatientName] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [toasts, setToasts] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState("week");
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -272,6 +303,7 @@ function RendezVous() {
     performIntegrityCheck(navigate, setError, true)
       .then(() => {
         fetchCurrentUser();
+        fetchPatients();
       })
       .catch(() => setLoading(false));
 
@@ -407,7 +439,9 @@ function RendezVous() {
 
   const changeDate = (dir) => {
     const d = new Date(selectedDate);
-    d.setDate(d.getDate() + dir * (viewMode === "day" ? 1 : 7));
+    if (viewMode === "day") d.setDate(d.getDate() + dir);
+    else if (viewMode === "month") d.setMonth(d.getMonth() + dir);
+    else d.setDate(d.getDate() + dir * 7);
     setSelectedDate(d);
     setExpandedDays({});
   };
@@ -433,6 +467,98 @@ function RendezVous() {
     localStorage.removeItem("user");
     localStorage.removeItem("userIntegrityHash");
     navigate("/login");
+  };
+
+  const addToast = (message, type = "success") => {
+    const id = Date.now() + Math.random();
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
+  };
+
+  const fetchPatients = async () => {
+    const token = getToken();
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/patients`, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } });
+      if (res.ok) {
+        const json = await res.json();
+        setPatients(json);
+      } else if (res.status === 401) {
+        clearAndRedirect(navigate);
+      }
+    } catch (err) {
+      console.error("Failed to fetch patients:", err);
+    }
+  };
+
+  const checkExistingPatient = (name) => {
+    if (!name?.trim()) return null;
+    const q = name.toLowerCase().trim();
+    return patients.find(
+      (p) =>
+        `${p.nom} ${p.prenom}`.toLowerCase().includes(q) ||
+        p.nom?.toLowerCase().includes(q) ||
+        p.prenom?.toLowerCase().includes(q)
+    );
+  };
+
+  const filteredPatients = patients.filter((p) => {
+    const q = patientSearchTerm.toLowerCase();
+    return (p.nom?.toLowerCase() || "").includes(q) || (p.prenom?.toLowerCase() || "").includes(q) || (p.telephone?.toLowerCase() || "").includes(q);
+  });
+
+  const handleSelectPatient = (p) => {
+    setFormData({ ...formData, patient_id: p.id });
+    setSelectedPatientName(`${p.nom} ${p.prenom}`);
+    setPatientDropdownOpen(false);
+    setPatientSearchTerm("");
+  };
+
+  const resetForm = () => {
+    setFormData({ patient_id: "", appointment_date: "", start_time: "", end_time: "", notes: "", status: "scheduled" });
+    setSelectedPatientName("");
+  };
+  const resetQuickAdd = () => {
+    setShowQuickAdd(false); setNewPatientName(""); setNewPatientPhone(""); setExistingPatientWarning(null); setPatientSearchTerm("");
+  };
+
+  const handleQuickAddAndAppointment = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      if (existingPatientWarning) { addToast("Ce patient existe déjà. Veuillez utiliser la sélection.", "error"); setIsSubmitting(false); return; }
+      const token = getToken();
+      const pRes = await fetch(`${API_BASE_URL}/patients`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ nom: newPatientName.split(" ")[0] || newPatientName, prenom: newPatientName.split(" ").slice(1).join(" ") || "", telephone: newPatientPhone || "" }) });
+      if (!pRes.ok) throw new Error("Failed to create patient");
+      const newPat = await pRes.json();
+      const apptRes = await fetch(`${API_BASE_URL}/appointments`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ ...formData, patient_id: newPat.id }) });
+      if (!apptRes.ok) throw new Error("Failed to create appointment");
+      addToast("Rendez-vous créé avec succès.", "success");
+      setShowAddModal(false); resetForm(); resetQuickAdd(); fetchPatients(); fetchAppointments();
+    } catch (err) {
+      console.error(err);
+      addToast("Erreur lors de la création: " + (err.message || "?"), "error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleAddAppointment = async (e) => {
+    e.preventDefault();
+    if (showQuickAdd) return handleQuickAddAndAppointment(e);
+    setIsSubmitting(true);
+    try {
+      const token = getToken();
+      const res = await fetch(`${API_BASE_URL}/appointments`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(formData) });
+      if (!res.ok) throw new Error("Failed to create appointment");
+      addToast("Rendez-vous créé avec succès.", "success");
+      setShowAddModal(false); resetForm(); fetchAppointments();
+    } catch (err) {
+      console.error(err);
+      addToast("Erreur: " + (err.message || "?"), "error");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const weekDates = getWeekDates(selectedDate);
@@ -471,6 +597,20 @@ function RendezVous() {
     <div className="flex h-screen overflow-hidden" style={{ background: "var(--surface)" }}>
       <style>{G}</style>
       <FontInjector />
+
+      <div className="fixed top-5 right-5 z-[60] space-y-2 w-80">
+        {toasts.map((t) => (
+          <div key={t.id} className={`rounded-2xl px-4 py-3 flex items-center justify-between text-white shadow-lg ${t.type === "success" ? "toast-success" : "toast-error"}`}>
+            <div className="flex items-center gap-2.5 text-sm font-semibold">
+              {t.type === "success" ? <svg className="w-4 h-4" /> : <FaExclamationCircle size={14} />}
+              {t.message}
+            </div>
+            <button onClick={() => setToasts((prev) => prev.filter((toast) => toast.id !== t.id))} className="ml-3 hover:opacity-70">
+              <FaTimes size={13} />
+            </button>
+          </div>
+        ))}
+      </div>
 
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -584,6 +724,11 @@ function RendezVous() {
                       month: "long",
                       day: "numeric",
                     })
+                  : viewMode === "month"
+                  ? selectedDate.toLocaleDateString("fr-FR", {
+                      month: "long",
+                      year: "numeric",
+                    })
                   : `Semaine du ${weekDates[0].toLocaleDateString("fr-FR", {
                       day: "numeric",
                       month: "long",
@@ -608,6 +753,7 @@ function RendezVous() {
                 {[
                   ["day", "Jour"],
                   ["week", "Semaine"],
+                  ["month", "Mois"],
                 ].map(([m, l]) => (
                   <button
                     key={m}
@@ -647,6 +793,13 @@ function RendezVous() {
                   <FaChevronRight size={13} />
                 </button>
               </div>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="btn-violet px-4 py-2.5 rounded-xl text-sm flex items-center gap-2"
+                style={{ fontWeight: 600 }}
+              >
+                <FaPlus size={12} /> Nouveau RDV
+              </button>
             </div>
           </div>
 
@@ -965,8 +1118,268 @@ function RendezVous() {
               })}
             </div>
           )}
+
+          {appointments.length > 0 && viewMode === "month" && (
+            <div
+              className="bg-white rounded-2xl p-6"
+              style={{ border: "1.5px solid var(--border)", boxShadow: "0 4px 24px rgba(6,13,31,0.06)" }}
+              data-aos="fade-up"
+            >
+              <div className="flex items-center justify-between mb-5 pb-4" style={{ borderBottom: "1.5px solid #F0EEFF" }}>
+                <div>
+                  <p className="font-700 text-sm" style={{ fontWeight: 700, color: "var(--text-1)" }}>
+                    Planning mensuel
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--text-2)" }}>
+                    {selectedDate.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}
+                  </p>
+                </div>
+                <span className="px-3 py-1.5 rounded-xl text-xs chip-violet" style={{ fontWeight: 600 }}>
+                  {appointments.length} rendez-vous
+                </span>
+              </div>
+
+              <div className="grid grid-cols-7 gap-2 mb-2 text-[11px] uppercase tracking-[0.12em]" style={{ color: "var(--text-2)", fontWeight: 700 }}>
+                {[
+                  "Lun",
+                  "Mar",
+                  "Mer",
+                  "Jeu",
+                  "Ven",
+                  "Sam",
+                  "Dim",
+                ].map((day) => (
+                  <div key={day} className="px-2 py-1 text-center">
+                    {day}
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-7 gap-2">
+                {getMonthDates(selectedDate).map((date) => {
+                  const dateStr = formatDate(date);
+                  const dayAppts = appointmentsByDate[dateStr] || [];
+                  const isCurrentMonth = date.getMonth() === selectedDate.getMonth();
+                  const today = isToday(date);
+
+                  return (
+                    <div
+                      key={dateStr}
+                      className="rounded-2xl p-3 min-h-[140px] border transition-all"
+                      style={{
+                        background: isCurrentMonth ? "#fff" : "#F8FAFF",
+                        borderColor: today ? "var(--violet)" : "#E2E8F0",
+                        boxShadow: today ? "0 0 0 3px rgba(139,92,246,0.16)" : "none",
+                        opacity: isCurrentMonth ? 1 : 0.55,
+                      }}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="w-7 h-7 rounded-xl flex items-center justify-center text-xs"
+                            style={{
+                              background: today ? "#EEE8FF" : "#F8FAFF",
+                              color: today ? "var(--violet)" : "var(--text-1)",
+                              fontWeight: 700,
+                            }}
+                          >
+                            {date.getDate()}
+                          </span>
+                          {today && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] chip-violet" style={{ fontWeight: 700 }}>
+                              Aujourd'hui
+                            </span>
+                          )}
+                        </div>
+                        {dayAppts.length > 0 && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] chip-violet" style={{ fontWeight: 600 }}>
+                            {dayAppts.length}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="space-y-1.5">
+                        {dayAppts.slice(0, 3).map((appt) => {
+                          const patientName = appt.patient
+                            ? `${appt.patient.nom || ""} ${appt.patient.prenom || ""}`.trim()
+                            : `Patient #${appt.patient_id}`;
+                          return (
+                            <button
+                              key={appt.id}
+                              type="button"
+                              onClick={() => openDetailsModal(appt)}
+                              className="w-full text-left rounded-xl px-2.5 py-2 text-[11px] transition-all"
+                              style={{
+                                background:
+                                  appt.status === "completed"
+                                    ? "#ECFDF5"
+                                    : appt.status === "cancelled"
+                                    ? "#FFF1F2"
+                                    : "#EEF4FF",
+                                border: "1px solid transparent",
+                                color:
+                                  appt.status === "completed"
+                                    ? "#065F46"
+                                    : appt.status === "cancelled"
+                                    ? "#9F1239"
+                                    : "#1E40AF",
+                              }}
+                            >
+                              <div className="font-700 truncate" style={{ fontWeight: 700 }}>
+                                {appt.start_time.substring(0, 5)} {patientName}
+                              </div>
+                              <div className="truncate opacity-80">{getStatusBadge(appt.status)}</div>
+                            </button>
+                          );
+                        })}
+                        {dayAppts.length > 3 && (
+                          <button
+                            type="button"
+                            onClick={() => openDetailsModal(dayAppts[3])}
+                            className="w-full text-left rounded-xl px-2.5 py-2 text-[11px] transition-all"
+                            style={{ background: "#F8FAFF", border: "1px dashed #CBD5E1", color: "var(--text-2)", fontWeight: 600 }}
+                          >
+                            +{dayAppts.length - 3} autres rendez-vous
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </main>
+
+      {showAddModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 modal-overlay">
+          <div className="modal-box bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="px-8 py-6 sticky top-0 bg-white flex justify-between items-center" style={{ borderBottom: "1.5px solid #F0EEFF" }}>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center btn-violet"><FaPlus className="text-white" size={13} /></div>
+                <h3 className="font-800 text-base" style={{ fontWeight: 800, color: "var(--text-1)" }}>Nouveau rendez-vous</h3>
+              </div>
+              {!showQuickAdd && (
+                <button type="button" onClick={() => setShowQuickAdd(true)} className="btn-emerald px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5" style={{ fontWeight: 600 }}>
+                  <FaUserPlus size={11} /> Nouveau patient
+                </button>
+              )}
+            </div>
+
+            <form onSubmit={handleAddAppointment} className="px-8 py-6 space-y-5">
+              {!showQuickAdd ? (
+                <div>
+                  <label className={"block text-xs font-600 mb-1.5 uppercase tracking-wider"} style={{ color: "var(--text-2)", fontWeight: 600 }}>Patient <span style={{ color: "var(--rose)" }}>*</span></label>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setPatientDropdownOpen(!patientDropdownOpen)}
+                      className="w-full p-3 rounded-xl text-sm text-left flex justify-between items-center rv-input"
+                    >
+                      <span style={{ color: formData.patient_id ? "var(--text-1)" : "#94A3B8" }}>
+                        {selectedPatientName || "Sélectionner un patient"}
+                      </span>
+                      <FaChevronCircleDown size={14} style={{ color: "#94A3B8", transform: patientDropdownOpen ? "rotate(180deg)" : "none", transition: "0.2s" }} />
+                    </button>
+                    {patientDropdownOpen && (
+                      <div className="absolute z-20 mt-1 w-full pt-dropdown overflow-hidden">
+                        <div className="p-2" style={{ borderBottom: "1.5px solid #F0EEFF" }}>
+                          <div className="relative">
+                            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2" size={12} style={{ color: "#94A3B8" }} />
+                            <input type="text" placeholder="Rechercher…" value={patientSearchTerm} onChange={(e) => setPatientSearchTerm(e.target.value)} className="w-full pl-9 pr-4 py-2 rounded-xl text-sm rv-input" autoFocus />
+                          </div>
+                        </div>
+                        <div className="overflow-y-auto max-h-52">
+                          {filteredPatients.length > 0 ? filteredPatients.map((p) => (
+                            <button key={p.id} type="button" onClick={() => handleSelectPatient(p)} className="pt-row w-full text-left px-4 py-3 flex items-center justify-between transition-all" style={{ borderBottom: "1px solid #F8F5FF" }}>
+                              <div>
+                                <span className="text-sm" style={{ fontWeight: 600, color: "var(--text-1)" }}>{p.nom} {p.prenom}</span>
+                                {p.telephone && <span className="text-xs ml-2" style={{ color: "var(--text-2)" }}>📞 {p.telephone}</span>}
+                              </div>
+                              {formData.patient_id === p.id && <span className="text-xs" style={{ color: "var(--violet)", fontWeight: 700 }}>✓</span>}
+                            </button>
+                          )) : (
+                            <div className="p-5 text-center text-sm" style={{ color: "var(--text-2)" }}>Aucun patient trouvé</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl p-4 space-y-3" style={{ background: "#F5FFFA", border: "1.5px solid #A7F3D0" }}>
+                  <p className="text-sm flex items-center gap-2" style={{ fontWeight: 700, color: "#065F46" }}>
+                    <FaUserPlus size={13} /> Nouveau patient
+                  </p>
+                  <div>
+                    <label className={"block text-xs font-600 mb-1.5 uppercase tracking-wider"} style={{ color: "#065F46", fontWeight: 600 }}>Nom complet *</label>
+                    <input type="text" value={newPatientName} onChange={(e) => { setNewPatientName(e.target.value); setExistingPatientWarning(checkExistingPatient(e.target.value)); }} className={"w-full p-3 rounded-xl text-sm rv-input"} placeholder="Jean Dupont" required />
+                  </div>
+                  {newPatientName && (
+                    <div>
+                      <label className={"block text-xs font-600 mb-1.5 uppercase tracking-wider"} style={{ color: "#065F46", fontWeight: 600 }}>Téléphone (optionnel)</label>
+                      <div className="relative">
+                        <FaPhone className="absolute left-3.5 top-1/2 -translate-y-1/2" size={12} style={{ color: "#94A3B8" }} />
+                        <input type="tel" value={newPatientPhone} onChange={(e) => setNewPatientPhone(e.target.value)} className={"w-full p-3 rounded-xl text-sm rv-input pl-10"} placeholder="06 12 34 56 78" />
+                      </div>
+                    </div>
+                  )}
+                  {existingPatientWarning && (
+                    <div className="rounded-xl p-3 flex items-start gap-2" style={{ background: "#FFFBEB", border: "1.5px solid #FDE68A" }}>
+                      <FaExclamationTriangle size={13} style={{ color: "#D97706", flexShrink: 0, marginTop: 2 }} />
+                      <div className="text-xs" style={{ color: "#92400E" }}>
+                        <p style={{ fontWeight: 700 }}>Patient existant détecté</p>
+                        <p>{existingPatientWarning.nom} {existingPatientWarning.prenom}</p>
+                        <p className="mt-0.5">Veuillez utiliser la sélection existante.</p>
+                      </div>
+                    </div>
+                  )}
+                  <button type="button" onClick={resetQuickAdd} className="btn-ghost px-3 py-1.5 rounded-xl text-xs" style={{ fontWeight: 600 }}>← Retour</button>
+                </div>
+              )}
+
+              <div>
+                <label className={"block text-xs font-600 mb-1.5 uppercase tracking-wider"} style={{ color: "var(--text-2)", fontWeight: 600 }}>Date <span style={{ color: "var(--rose)" }}>*</span></label>
+                <input type="date" value={formData.appointment_date} onChange={(e) => setFormData({ ...formData, appointment_date: e.target.value })} className={"w-full p-3 rounded-xl text-sm rv-input"} required />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={"block text-xs font-600 mb-1.5 uppercase tracking-wider"} style={{ color: "var(--text-2)", fontWeight: 600 }}>Début <span style={{ color: "var(--rose)" }}>*</span></label>
+                  <input type="time" value={formData.start_time} onChange={(e) => setFormData({ ...formData, start_time: e.target.value })} min="08:00" max="18:00" step="60" className={"w-full p-3 rounded-xl text-sm rv-input"} required />
+                  <p className="text-xs mt-1" style={{ color: "var(--text-2)" }}>Entre 08:00 et 18:00</p>
+                </div>
+                <div>
+                  <label className={"block text-xs font-600 mb-1.5 uppercase tracking-wider"} style={{ color: "var(--text-2)", fontWeight: 600 }}>Fin <span style={{ color: "var(--rose)" }}>*</span></label>
+                  <input type="time" value={formData.end_time} onChange={(e) => setFormData({ ...formData, end_time: e.target.value })} min="08:00" max="18:00" step="60" className={"w-full p-3 rounded-xl text-sm rv-input"} required />
+                </div>
+              </div>
+
+              <div>
+                <label className={"block text-xs font-600 mb-1.5 uppercase tracking-wider"} style={{ color: "var(--text-2)", fontWeight: 600 }}>Statut</label>
+                <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className={"w-full p-3 rounded-xl text-sm rv-input"}>
+                  <option value="scheduled">Planifié</option>
+                  <option value="completed">Terminé</option>
+                  <option value="cancelled">Annulé</option>
+                </select>
+              </div>
+
+              <div>
+                <label className={"block text-xs font-600 mb-1.5 uppercase tracking-wider"} style={{ color: "var(--text-2)", fontWeight: 600 }}>Notes</label>
+                <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} rows="3" className={"w-full p-3 rounded-xl text-sm rv-input"} placeholder="Informations complémentaires…" />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={() => { setShowAddModal(false); resetForm(); resetQuickAdd(); setPatientDropdownOpen(false); }} className="btn-ghost px-5 py-2.5 rounded-xl text-sm" style={{ fontWeight: 600 }}>Annuler</button>
+                <button type="submit" disabled={isSubmitting || (showQuickAdd && !!existingPatientWarning) || (!showQuickAdd && !formData.patient_id)} className="btn-violet px-6 py-2.5 rounded-xl text-sm flex items-center gap-2" style={{ fontWeight: 600 }}>
+                  {isSubmitting ? <FaSpinner className="animate-spin" size={13} /> : <><FaPlus size={12} /> Créer</>}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {showDetailsModal && currentAppointment && (
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4 modal-overlay">

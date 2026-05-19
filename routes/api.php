@@ -130,6 +130,10 @@ Route::middleware(['jwt.auth'])->group(function () {
 
     // Tasks ( doc/sec )
     Route::middleware(['jwt.auth', 'role:secretaire,medecin'])->prefix('doctor')->group(function () {
+        // Patient account management (doctor + secretary)
+        Route::post('/patients-users', [UsersController::class, 'storePatientUser']);
+        Route::get('/patients-users', [UsersController::class, 'getMyPatientUsers']);
+        Route::delete('/patients-users/{id}', [UsersController::class, 'destroyPatientUser']);
         Route::get('/tasks', [DoctorTaskController::class, 'index']);
         Route::post('/tasks', [DoctorTaskController::class, 'store']);
         Route::put('/tasks/{id}', [DoctorTaskController::class, 'update']);
@@ -142,6 +146,18 @@ Route::middleware(['jwt.auth'])->group(function () {
         Route::post('/communications', [CommunicationController::class, 'store']);
         Route::get('/communications/{id}/download/{index?}', [CommunicationController::class, 'download']);
         Route::get('/communications/{id}/view/{index?}', [CommunicationController::class, 'view']);
+    });
+
+    // Communications (admin/doctor/secretary)
+    Route::middleware(['jwt.auth', 'role:admin,medecin,secretaire'])->prefix('communications')->group(function () {
+        Route::get('/', [CommunicationController::class, 'index']);
+        Route::post('/', [CommunicationController::class, 'store']);
+        Route::get('/contacts', [CommunicationController::class, 'contacts']);
+        Route::get('/unread-count', [CommunicationController::class, 'unreadCount']);
+        Route::get('/notifications', [CommunicationController::class, 'notifications']);
+        Route::post('/{id}/mark-read', [CommunicationController::class, 'markRead']);
+        Route::get('/{id}/download/{index?}', [CommunicationController::class, 'download']);
+        Route::get('/{id}/view/{index?}', [CommunicationController::class, 'view']);
     });
 
     // Doctor AI assistant

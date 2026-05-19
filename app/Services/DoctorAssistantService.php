@@ -21,8 +21,8 @@ class DoctorAssistantService
 
     public function __construct()
     {
-        $this->apiKey = (string) config('services.gemini.api_key');
-        $this->model = (string) config('services.gemini.model', 'gemini-2.0-flash');
+        $this->apiKey = $this->resolveApiKey();
+        $this->model = (string) config('services.gemini.model', 'gemini-2.5-flash');
     }
 
     public function chat(User $doctor, string $message, array $history = []): array
@@ -31,17 +31,64 @@ class DoctorAssistantService
             throw new RuntimeException('Le message ne peut pas être vide.');
         }
 
-        if ($this->apiKey === '') {
-            throw new RuntimeException('La clé Gemini est manquante.');
-        }
+        \Log::info('Doctor assistant chat request', [
+            'doctor_id' => $doctor->id,
+            'doctor_name' => $doctor->name,
+            'message' => substr($message, 0, 100),
+            'has_api_key' => $this->apiKey !== '',
+        ]);
 
         $context = $this->buildContext($doctor, $message);
+        
+        // If no API key, provide demo response with the data
+        if ($this->apiKey === '') {
+            return [
+                'answer' => $this->generateDemoAnswer($message, $context),
+                'context' => $context,
+            ];
+        }
+        
         $answer = $this->generateAnswer($doctor, $message, $history, $context);
 
         return [
             'answer' => $answer,
             'context' => $context,
         ];
+    }
+
+    private function generateDemoAnswer(string $message, array $context): string
+    {
+        $summary = $context['summary'] ?? [];
+        $stats = $summary['stats'] ?? [];
+        
+        $demoResponse = "🔧 **Mode démonstration** (clé Gemini non configurée)\n\n";
+        $demoResponse .= "**Votre question:** $message\n\n";
+        $demoResponse .= "**Données disponibles pour analyse:**\n\n";
+        $demoResponse .= "📊 **Statistiques:**\n";
+        $demoResponse .= "- Patients: {$stats['patients_count']}\n";
+        $demoResponse .= "- Demandes en attente: {$stats['pending_requests_count']}\n";
+        $demoResponse .= "- Rendez-vous à venir: {$stats['upcoming_appointments_count']}\n";
+        $demoResponse .= "- Visites récentes: {$stats['recent_visits_count']}\n";
+        $demoResponse .= "- Documents: {$stats['documents_count']}\n";
+        
+        if (!empty($context['appointments']['pending'])) {
+            $demoResponse .= "\n📋 **Demandes en attente:**\n";
+            foreach (array_slice($context['appointments']['pending'], 0, 5) as $appt) {
+                $demoResponse .= "- {$appt['patient']}: {$appt['appointment_date']} {$appt['start_time']}\n";
+            }
+        }
+        
+        if (!empty($context['patients'])) {
+            $demoResponse .= "\n👥 **Patients pertinents:**\n";
+            foreach (array_slice($context['patients'], 0, 5) as $patient) {
+                $demoResponse .= "- {$patient['name']} (âge: {$patient['age']})\n";
+            }
+        }
+        
+        $demoResponse .= "\n⚙️ **Pour une analyse complète par IA:** Configurez `GEMINI_API_KEY` dans votre fichier `.env`\n";
+        $demoResponse .= "Visitez: https://ai.google.dev/gemini-api\n";
+        
+        return $demoResponse;
     }
 
     private function generateAnswer(User $doctor, string $message, array $history, array $context): string
@@ -61,6 +108,11 @@ class DoctorAssistantService
             ],
         ];
 
+        \Log::debug('Sending request to Gemini', [
+            'endpoint' => $this->endpoint(),
+            'model' => $this->model,
+        ]);
+
         try {
             $response = Http::timeout(60)
                 ->retry(2, 400)
@@ -68,16 +120,43 @@ class DoctorAssistantService
                 ->post($this->endpoint(), $payload)
                 ->throw();
         } catch (RequestException $e) {
+            $errorBody = $e->response ? $e->response->body() : 'No response body';
+            \Log::error('Gemini API Error', [
+                'message' => $e->getMessage(),
+                'status' => $e->response?->status(),
+                'body' => $errorBody,
+            ]);
             throw new RuntimeException('Impossible de joindre Gemini: ' . $e->getMessage(), 0, $e);
         }
 
-        $answer = data_get($response->json(), 'candidates.0.content.parts.0.text');
+        $responseBody = $response->json();
+        
+        \Log::debug('Gemini API response received', [
+            'status' => $response->status(),
+            'has_error' => isset($responseBody['error']),
+            'has_candidates' => isset($responseBody['candidates']),
+        ]);
+        
+        // Check for API errors
+        if (isset($responseBody['error'])) {
+            \Log::error('Gemini API returned error', $responseBody['error']);
+            throw new RuntimeException('Gemini API error: ' . json_encode($responseBody['error']));
+        }
+
+        $answer = data_get($responseBody, 'candidates.0.content.parts.0.text');
 
         if (!is_string($answer) || trim($answer) === '') {
+            \Log::error('Gemini returned empty answer', ['response' => $responseBody]);
             throw new RuntimeException('Gemini n’a pas retourné de réponse exploitable.');
         }
 
         return trim($answer);
+    }
+
+    private function resolveApiKey(): string
+    {
+        $key = trim((string) (env('GEMINI_API_KEY') ?? ''));
+        return $key;
     }
 
     private function endpoint(): string
@@ -132,7 +211,33 @@ PROMPT;
 
     private function buildUserPrompt(User $doctor, string $message, array $context): string
     {
-        return "Médecin: {$doctor->name}\nMessage: {$message}\n\nContexte JSON:\n" . json_encode($context, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        $summary = $context['summary'] ?? [];
+        $stats = $summary['stats'] ?? [];
+        
+        $contextText = "Médecin: {$doctor->name}\n";
+        $contextText .= "Message: {$message}\n\n";
+        $contextText .= "STATS:\n";
+        $contextText .= "- Patients: {$stats['patients_count']}\n";
+        $contextText .= "- Demandes en attente: {$stats['pending_requests_count']}\n";
+        $contextText .= "- Rendez-vous à venir: {$stats['upcoming_appointments_count']}\n";
+        $contextText .= "- Visites récentes: {$stats['recent_visits_count']}\n";
+        $contextText .= "- Documents: {$stats['documents_count']}\n";
+        
+        if (!empty($context['appointments']['pending'])) {
+            $contextText .= "\nDEMANDES EN ATTENTE:\n";
+            foreach (array_slice($context['appointments']['pending'], 0, 5) as $appt) {
+                $contextText .= "- {$appt['patient']}: {$appt['appointment_date']} {$appt['start_time']}\n";
+            }
+        }
+        
+        if (!empty($context['patients'])) {
+            $contextText .= "\nPATIENTS PERTINENTS:\n";
+            foreach (array_slice($context['patients'], 0, 5) as $patient) {
+                $contextText .= "- {$patient['name']} (âge: {$patient['age']}, dernière visite: {$patient['last_visit_date']})\n";
+            }
+        }
+        
+        return $contextText;
     }
 
     private function buildContext(User $doctor, string $message): array
@@ -175,8 +280,8 @@ PROMPT;
             ],
             'stats' => [
                 'patients_count' => Patient::where('doctor_id', $doctorId)->count(),
-                'pending_requests_count' => Appointment::where('doctor_id', $doctorId)->where('request_status', 'pending')->count(),
-                'upcoming_appointments_count' => Appointment::where('doctor_id', $doctorId)->where('request_status', 'accepted')->whereDate('appointment_date', '>=', Carbon::today())->count(),
+                'pending_requests_count' => Appointment::where('doctor_id', $doctorId)->whereIn('status', ['scheduled', 'pending'])->count(),
+                'upcoming_appointments_count' => Appointment::where('doctor_id', $doctorId)->where('status', 'scheduled')->whereDate('appointment_date', '>=', Carbon::today())->count(),
                 'recent_visits_count' => Visite::whereHas('patient', fn ($query) => $query->where('doctor_id', $doctorId))->count(),
                 'documents_count' => DocumentMedical::whereHas('patient', fn ($query) => $query->where('doctor_id', $doctorId))->count(),
             ],
@@ -253,7 +358,7 @@ PROMPT;
     {
         return Appointment::with('patient:id,nom,prenom,email,telephone')
             ->where('doctor_id', $doctorId)
-            ->where('request_status', 'pending')
+            ->whereIn('status', ['scheduled', 'pending'])
             ->when(!empty($patientIds), fn ($query) => $query->whereIn('patient_id', $patientIds))
             ->orderByDesc('created_at')
             ->limit(10)
@@ -267,7 +372,7 @@ PROMPT;
     {
         return Appointment::with('patient:id,nom,prenom,email,telephone')
             ->where('doctor_id', $doctorId)
-            ->where('request_status', 'accepted')
+            ->where('status', 'scheduled')
             ->whereDate('appointment_date', '>=', Carbon::today())
             ->when(!empty($patientIds), fn ($query) => $query->whereIn('patient_id', $patientIds))
             ->orderBy('appointment_date')
@@ -284,8 +389,8 @@ PROMPT;
         return Appointment::with('patient:id,nom,prenom,email,telephone')
             ->where('doctor_id', $doctorId)
             ->where(function ($query) {
-                $query->where('request_status', 'accepted')
-                    ->orWhere('status', 'completed');
+                $query->where('status', 'completed')
+                    ->orWhere('status', 'cancelled');
             })
             ->whereDate('appointment_date', '<', Carbon::today())
             ->when(!empty($patientIds), fn ($query) => $query->whereIn('patient_id', $patientIds))
@@ -352,8 +457,6 @@ PROMPT;
             'start_time' => $appointment->start_time,
             'end_time' => $appointment->end_time,
             'status' => $appointment->status,
-            'request_status' => $appointment->request_status ?? 'accepted',
-            'notes' => $appointment->notes,
         ];
     }
 }

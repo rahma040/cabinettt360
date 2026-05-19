@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Communication;
+use App\Models\User;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\DB;
 
 class CommunicationController extends Controller
 {
@@ -23,26 +23,76 @@ class CommunicationController extends Controller
 
     public function store(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'recipient_email' => 'required|email',
-            'message'         => 'required|string',
-            'files'           => 'nullable|array',
-            'files.*'         => 'mimes:pdf|max:10240',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
         $user = $this->resolveUser($request);
         if (!$user) {
             return response()->json(['error' => 'Unauthenticated'], 401);
         }
 
+        $rules = [
+            'message' => 'required|string',
+            'files' => 'nullable|array',
+            'files.*' => 'mimes:pdf|max:10240',
+        ];
+
+        if ($user->role === 'medecin') {
+            $rules['recipient_id'] = 'required|integer';
+        } elseif ($user->role === 'admin') {
+            $rules['recipient_email'] = 'required_without:recipient_id|nullable|email';
+            $rules['recipient_id'] = 'nullable|integer';
+        }
+
+        $validator = Validator::make($request->all(), $rules);
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $recipient = null;
+        $recipientEmail = null;
+
+        if ($user->role === 'medecin') {
+            $recipient = User::where('id', $request->integer('recipient_id'))
+                ->where('role', 'secretaire')
+                ->where('doctor_id', $user->id)
+                ->first();
+
+            if (!$recipient) {
+                return response()->json(['error' => 'Destinataire invalide'], 422);
+            }
+
+            $recipientEmail = $recipient->email;
+        } elseif ($user->role === 'secretaire') {
+            $recipient = User::where('id', $user->doctor_id)
+                ->where('role', 'medecin')
+                ->first();
+
+            if (!$recipient) {
+                return response()->json(['error' => 'Médecin lié introuvable'], 422);
+            }
+
+            $recipientEmail = $recipient->email;
+        } else {
+            if ($request->filled('recipient_id')) {
+                $recipient = User::find($request->integer('recipient_id'));
+                if ($recipient) {
+                    $recipientEmail = $recipient->email;
+                }
+            }
+
+            if (!$recipientEmail) {
+                $recipientEmail = $request->input('recipient_email');
+            }
+
+            if (!$recipientEmail) {
+                return response()->json(['error' => 'Destinataire invalide'], 422);
+            }
+        }
+
         $data = [
-            'sender_id'       => $user->id,
-            'recipient_email' => $request->recipient_email,
-            'message'         => $request->message,
+            'sender_id' => $user->id,
+            'recipient_id' => $recipient?->id,
+            'recipient_email' => $recipientEmail,
+            'message' => $request->message,
+            'is_read' => false,
         ];
 
         $filePaths = [];
@@ -54,7 +104,7 @@ class CommunicationController extends Controller
         }
         $data['file_path'] = $filePaths;
 
-        $communication = Communication::create($data);
+        $communication = Communication::create($data)->load(['sender:id,name,email', 'recipient:id,name,email']);
 
         return response()->json([
             'message'       => 'Message envoyé avec succès',
@@ -69,34 +119,147 @@ class CommunicationController extends Controller
             return response()->json(['error' => 'Unauthenticated'], 401);
         }
 
-        // Fetch sent messages
-        $sent = Communication::where('sender_id', $user->id)
-            ->orderBy('created_at', 'desc')
+        $communications = Communication::with(['sender:id,name,email', 'recipient:id,name,email'])
+            ->where(function ($query) use ($user) {
+                $query->where('sender_id', $user->id)
+                    ->orWhere('recipient_id', $user->id)
+                    ->orWhere('recipient_email', $user->email);
+            })
+            ->orderByDesc('created_at')
             ->get()
             ->map(function ($item) use ($user) {
-                $item->direction = 'sent';
-                $item->other_party_email = $item->recipient_email;
-                return $item;
-            });
+                $isSender = (int) $item->sender_id === (int) $user->id;
 
-        // Fetch received messages
-        $received = Communication::where('recipient_email', $user->email)
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function ($item) use ($user) {
-                $item->direction = 'received';
-                // Load sender details
-                if ($item->sender) {
-                    $item->other_party_email = $item->sender->email;
+                $item->direction = $isSender ? 'sent' : 'received';
+
+                if ($isSender) {
+                    $item->other_party_id = $item->recipient_id;
+                    $item->other_party_name = $item->recipient?->name;
+                    $item->other_party_email = $item->recipient?->email ?? $item->recipient_email;
                 } else {
-                    $item->other_party_email = 'inconnu@example.com';
+                    $item->other_party_id = $item->sender?->id;
+                    $item->other_party_name = $item->sender?->name;
+                    $item->other_party_email = $item->sender?->email ?? 'inconnu@example.com';
                 }
-                return $item;
-            });
 
-        $communications = $sent->concat($received)->sortByDesc('created_at')->values();
+                return $item;
+            })
+            ->values();
 
         return response()->json($communications);
+    }
+
+    public function contacts(Request $request)
+    {
+        $user = $this->resolveUser($request);
+        if (!$user) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
+        }
+
+        if ($user->role === 'medecin') {
+            $contacts = User::where('doctor_id', $user->id)
+                ->where('role', 'secretaire')
+                ->orderBy('name')
+                ->get(['id', 'name', 'email'])
+                ->map(fn ($contact) => [
+                    'id' => $contact->id,
+                    'name' => $contact->name,
+                    'email' => $contact->email,
+                    'role' => $contact->role,
+                ])
+                ->values();
+
+            return response()->json($contacts);
+        }
+
+        if ($user->role === 'secretaire') {
+            $doctor = User::where('id', $user->doctor_id)
+                ->where('role', 'medecin')
+                ->first(['id', 'name', 'email', 'role']);
+
+            return response()->json($doctor ? [$doctor] : []);
+        }
+
+        $contacts = User::whereIn('role', ['medecin', 'secretaire'])
+            ->orderBy('name')
+            ->limit(100)
+            ->get(['id', 'name', 'email', 'role']);
+
+        return response()->json($contacts);
+    }
+
+    public function unreadCount(Request $request)
+    {
+        $user = $this->resolveUser($request);
+        if (!$user) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
+        }
+
+        $count = Communication::where(function ($query) use ($user) {
+            $query->where('recipient_id', $user->id)
+                ->orWhere('recipient_email', $user->email);
+        })
+            ->where('sender_id', '!=', $user->id)
+            ->where('is_read', false)
+            ->count();
+
+        return response()->json(['count' => $count]);
+    }
+
+    public function notifications(Request $request)
+    {
+        $user = $this->resolveUser($request);
+        if (!$user) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
+        }
+
+        $items = Communication::with(['sender:id,name,email'])
+            ->where(function ($query) use ($user) {
+                $query->where('recipient_id', $user->id)
+                    ->orWhere('recipient_email', $user->email);
+            })
+            ->where('sender_id', '!=', $user->id)
+            ->where('is_read', false)
+            ->orderByDesc('created_at')
+            ->limit(20)
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'sender_id' => $item->sender_id,
+                    'sender_name' => $item->sender?->name,
+                    'sender_email' => $item->sender?->email,
+                    'message_preview' => mb_substr((string) $item->message, 0, 120),
+                    'created_at' => $item->created_at,
+                ];
+            })
+            ->values();
+
+        return response()->json($items);
+    }
+
+    public function markRead(Request $request, $id)
+    {
+        $user = $this->resolveUser($request);
+        if (!$user) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
+        }
+
+        $communication = Communication::where('id', $id)
+            ->where(function ($query) use ($user) {
+                $query->where('recipient_id', $user->id)
+                    ->orWhere('recipient_email', $user->email);
+            })
+            ->first();
+
+        if (!$communication) {
+            return response()->json(['error' => 'Message non trouvé'], 404);
+        }
+
+        $communication->is_read = true;
+        $communication->save();
+
+        return response()->json(['message' => 'Notification marquée comme lue']);
     }
 
     public function view(Request $request, $id, $index = 0)
@@ -108,8 +271,8 @@ class CommunicationController extends Controller
 
         $communication = Communication::where('id', $id)->firstOrFail();
 
-        $isSender = ($communication->sender_id == $user->id);
-        $isRecipient = ($communication->recipient_email == $user->email);
+        $isSender = ((int) $communication->sender_id === (int) $user->id);
+        $isRecipient = ((int) $communication->recipient_id === (int) $user->id) || ($communication->recipient_email === $user->email);
 
         if (!$isSender && !$isRecipient) {
             return response()->json(['error' => 'Unauthorized'], 403);
@@ -140,8 +303,8 @@ class CommunicationController extends Controller
 
         $communication = Communication::where('id', $id)->firstOrFail();
 
-        $isSender = ($communication->sender_id == $user->id);
-        $isRecipient = ($communication->recipient_email == $user->email);
+        $isSender = ((int) $communication->sender_id === (int) $user->id);
+        $isRecipient = ((int) $communication->recipient_id === (int) $user->id) || ($communication->recipient_email === $user->email);
 
         if (!$isSender && !$isRecipient) {
             return response()->json(['error' => 'Unauthorized'], 403);

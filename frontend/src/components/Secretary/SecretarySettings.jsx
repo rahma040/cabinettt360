@@ -201,10 +201,12 @@ function SecretarySettings() {
   const navItems = [
     { to: "/secretariatdb", icon: <FaHome />, label: "Tableau de bord" },
     { to: "/secpatients", icon: <FaUserInjured />, label: "Patients" },
+    { to: "/seccreatepatient", icon: <FaUserPlus />, label: "Comptes patients" },
     { to: "/secretaryRendezvous", icon: <FaCalendarCheck />, label: "Rendez-vous" },
     { to: "/sectasks", icon: <FaClipboardList />, label: "Tâches" },
     { to: "/secwaiting", icon: <FaUserClock />, label: "Salle d'attente" },
     { to: "/secpay", icon: <FaMoneyBillWave />, label: "Paiements" },
+    { to: "/secmail", icon: <FaEnvelope />, label: "Messagerie" },
     { to: "/secsettings", icon: <FaCog />, label: "Paramètres", active: true },
   ];
 

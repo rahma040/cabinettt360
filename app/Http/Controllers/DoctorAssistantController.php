@@ -36,7 +36,11 @@ class DoctorAssistantController extends Controller
                 'suggestions' => $response['context']['suggestions'] ?? [],
             ]);
         } catch (\Throwable $e) {
-            report($e);
+            \Log::error('Doctor assistant error', [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
 
             return response()->json([
                 'error' => 'Impossible de générer une réponse pour le moment.',

@@ -36,8 +36,8 @@ return [
     ],
 
     'gemini' => [
-        'api_key' => env('GEMINI_API_KEY', env('GEOIP_API_KEY')),
-        'model' => env('GEMINI_MODEL', 'gemini-2.0-flash'),
+        'api_key' => env('GEMINI_API_KEY'),
+        'model' => env('GEMINI_MODEL', 'gemini-2.5-flash'),
     ],
 
 ];

@@ -11,7 +11,14 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-const NotificationModal = ({ isOpen, onClose, onActionComplete }) => {
+const NotificationModal = ({
+  isOpen,
+  onClose,
+  onActionComplete,
+  messageNotifications = [],
+  unreadMessageCount = 0,
+  onOpenMessages,
+}) => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
@@ -88,6 +95,38 @@ const NotificationModal = ({ isOpen, onClose, onActionComplete }) => {
         </div>
 
         <div className="flex-1 overflow-y-auto">
+          {unreadMessageCount > 0 && (
+            <div className="px-4 pt-4">
+              <div className="p-3 rounded-xl border" style={{ background: "rgba(255,255,255,.02)", borderColor: "var(--border)" }}>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm" style={{ color: "var(--text-1)", fontWeight: 700 }}>
+                    Messages non lus ({unreadMessageCount})
+                  </p>
+                  <button
+                    type="button"
+                    onClick={onOpenMessages}
+                    className="text-xs px-2 py-1 rounded-lg"
+                    style={{ background: "rgba(255,255,255,.05)", color: "var(--text-1)", fontWeight: 600 }}
+                  >
+                    Ouvrir messagerie
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {messageNotifications.slice(0, 3).map((item) => (
+                    <div key={item.id} className="p-2 rounded-lg" style={{ background: "rgba(255,255,255,.04)" }}>
+                      <p className="text-xs" style={{ color: "var(--text-1)", fontWeight: 700 }}>
+                        {item.sender_name || item.sender_email || "Expéditeur"}
+                      </p>
+                      <p className="text-xs" style={{ color: "var(--text-2)" }}>
+                        {item.message_preview}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {loading ? (
             <div className="p-6 text-center" style={{ color: "var(--text-2)" }}>
               Chargement...

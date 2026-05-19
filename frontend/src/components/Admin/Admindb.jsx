@@ -202,6 +202,9 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [error, setError] = useState(null);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+  const [messageNotifications, setMessageNotifications] = useState([]);
 
   const [dashboardData, setDashboardData] = useState({
     totalUsers: 0, totalPatients: 0, totalMedecins: 0, totalSecretaires: 0, totalAdmins: 0,
@@ -260,8 +263,15 @@ const AdminDashboard = () => {
   const fetchDashboardData = async () => {
     setError(null);
     try {
-      const res = await api.get("/admin/dashboard");
-      setDashboardData(res.data);
+      const [dashboardRes, unreadRes, notifRes] = await Promise.all([
+        api.get("/admin/dashboard"),
+        api.get("/communications/unread-count"),
+        api.get("/communications/notifications"),
+      ]);
+
+      setDashboardData(dashboardRes.data);
+      setUnreadMessageCount(unreadRes.data?.count || 0);
+      setMessageNotifications(Array.isArray(notifRes.data) ? notifRes.data : []);
     } catch (err) {
       console.error(err);
       setError("Impossible de charger les données du tableau de bord.");
@@ -374,10 +384,13 @@ const AdminDashboard = () => {
               <button onClick={fetchDashboardData} className="w-10 h-10 rounded-xl flex items-center justify-center btn-ghost" title="Actualiser">
                 <FaSync size={13} style={{ color: "#64748B" }} />
               </button>
-              <button className="relative w-10 h-10 rounded-xl flex items-center justify-center btn-ghost">
+              <button
+                onClick={() => setShowNotifications((prev) => !prev)}
+                className="relative w-10 h-10 rounded-xl flex items-center justify-center btn-ghost"
+              >
                 <FaBell size={15} style={{ color: "#64748B" }} />
                 <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-white flex items-center justify-center" style={{ background: "var(--rose)", fontSize: 9, fontWeight: 700 }}>
-                  {dashboardData.pendingResetRequests + dashboardData.unverifiedDoctors}
+                  {dashboardData.pendingResetRequests + dashboardData.unverifiedDoctors + unreadMessageCount}
                 </span>
               </button>
               <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl" style={{ background: "#fff", border: "1.5px solid var(--border)" }}>
@@ -385,6 +398,42 @@ const AdminDashboard = () => {
                 <span className="hidden sm:inline text-sm" style={{ fontWeight: 600, color: "var(--text-1)" }}>{user?.name || "Admin"}</span>
               </div>
             </div>
+
+            {showNotifications && (
+              <div className="mt-3 p-3 rounded-xl" style={{ background: "#fff", border: "1.5px solid var(--border)", minWidth: 300 }}>
+                <p className="text-xs mb-2" style={{ color: "var(--text-2)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em" }}>
+                  Notifications
+                </p>
+                <div className="space-y-2 text-xs" style={{ color: "var(--text-1)" }}>
+                  <div className="flex items-center justify-between">
+                    <span>Demandes de réinitialisation</span>
+                    <span style={{ fontWeight: 700 }}>{dashboardData.pendingResetRequests}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Médecins à vérifier</span>
+                    <span style={{ fontWeight: 700 }}>{dashboardData.unverifiedDoctors}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Messages non lus</span>
+                    <span style={{ fontWeight: 700 }}>{unreadMessageCount}</span>
+                  </div>
+                </div>
+
+                {messageNotifications.length > 0 && (
+                  <div className="mt-3 pt-3" style={{ borderTop: "1px solid #E8EEFF" }}>
+                    <p className="text-xs mb-2" style={{ color: "var(--text-2)", fontWeight: 700 }}>Derniers messages</p>
+                    <div className="space-y-2">
+                      {messageNotifications.slice(0, 3).map((item) => (
+                        <div key={item.id} className="p-2 rounded-lg" style={{ background: "#F8FAFF" }}>
+                          <p className="text-xs" style={{ fontWeight: 700 }}>{item.sender_name || item.sender_email || "Expéditeur"}</p>
+                          <p className="text-xs truncate" style={{ color: "var(--text-2)" }}>{item.message_preview}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {error && (

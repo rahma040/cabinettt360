@@ -34,6 +34,7 @@ import SecretaryPatients from "./components/Secretary/SecretaryPatients";
 import DoctorWaitingRoom from "./components/Doctor/DoctorWaitingRoom";
 import PrescriptionTemplates from "./components/Doctor/PrescriptionTemplates";
 import DoctorSecretaries from "./components/Doctor/DoctorSecretaries";
+import DoctorPatientsAccounts from "./components/Doctor/DoctorPatientsAccounts";
 import Patients from './components/Doctor/Patients';
 import RendezVous from "./components/Doctor/RendezVous";
 import Docdb from "./components/Doctor/DocDashboard";
@@ -92,7 +93,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0f172a] overflow-x-hidden flex flex-col">
-      <style jsx global>{`
+      <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
         * {
           font-family: 'Sora', sans-serif;
@@ -207,6 +208,8 @@ function App() {
 
           <Route path="/docdb" element={<Docdb />} />
           <Route path="/createsec" element={<DoctorSecretaries />} />
+          <Route path="/createpatient" element={<DoctorPatientsAccounts />} />
+          <Route path="/seccreatepatient" element={<DoctorPatientsAccounts />} />
           <Route path="/patients" element={<Patients />} />
           <Route path="/rendezvous" element={<RendezVous />} />
           <Route path="/prescription" element={<PrescriptionTemplates />} />
@@ -226,12 +229,13 @@ function App() {
           <Route path="/secretaryRendezvous" element={<SecretaryRendezVous />} />
           <Route path="/secwaiting" element={<SecretaryWaitingRoom />} />
           <Route path="/secpay" element={<SecretaryPayments />} />
+          <Route path="/secmail" element={<DoctorCommunication />} />
           <Route path="/sectasks" element={<SecretaryTasks />} />
           <Route path="/secsettings" element={<SecretarySettings />} />
         </Routes>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes fadeInUp {
           from {
             opacity: 0;

@@ -352,6 +352,7 @@ const DoctorDashboard = () => {
     { to: "/docmail", icon: <FaEnvelope />, label: "Communication"},
     { to: "/doctuto", icon: <FaGraduationCap />, label: "Tutoriel" },
     { to: "/docsettings", icon: <FaCog />, label: "Paramètres" },
+      { to: "/createpatient", icon: <FaUserPlus />, label: "Comptes patients" },
   ];
 
   const addToast = (message, type = "success") => {
@@ -498,8 +499,10 @@ const DoctorDashboard = () => {
 
   const quickActions = [
     { to: "/patients", icon: <FaUserPlus size={18} style={{ color: "#1E40AF" }} />, bg: "#EEF4FF", label: "Nouveau patient" },
+    { to: "/createpatient", icon: <FaUserPlus size={18} style={{ color: "#059669" }} />, bg: "#ECFDF5", label: "Comptes patients" },
     { to: "/rendezvous", icon: <FaCalendarAlt size={18} style={{ color: "#D97706" }} />, bg: "#FFFBEB", label: "Rendez-vous" },
     { to: "/prescription", icon: <FaFilePrescription size={18} style={{ color: "#059669" }} />, bg: "#ECFDF5", label: "Ordonnance" },
+    { to: "/docmail", icon: <FaEnvelope size={18} style={{ color: "#5B21B6" }} />, bg: "#EEE8FF", label: "Communication" },
     { to: "/docstats", icon: <FaChartLine size={18} style={{ color: "#5B21B6" }} />, bg: "#EEE8FF", label: "Statistiques" },
   ];
 

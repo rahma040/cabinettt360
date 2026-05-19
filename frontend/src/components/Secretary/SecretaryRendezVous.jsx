@@ -35,6 +35,7 @@ import {
   FaClipboardList,
   FaCheckCircle,
   FaExclamationCircle,
+  FaEnvelope,
 } from "react-icons/fa";
 
 const API_BASE_URL = "http://127.0.0.1:8000/api";
@@ -193,6 +194,19 @@ const getWeekDates = (date) => {
   return Array.from({ length: 6 }, (_, i) => {
     const d = new Date(mon);
     d.setDate(mon.getDate() + i);
+    return d;
+  });
+};
+
+const getMonthDates = (date) => {
+  const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+  const startDay = firstDay.getDay();
+  const calendarStart = new Date(firstDay);
+  calendarStart.setDate(firstDay.getDate() - (startDay === 0 ? 6 : startDay - 1));
+
+  return Array.from({ length: 42 }, (_, i) => {
+    const d = new Date(calendarStart);
+    d.setDate(calendarStart.getDate() + i);
     return d;
   });
 };
@@ -599,7 +613,9 @@ function SecretaryRendezVous() {
 
   const changeDate = (dir) => {
     const d = new Date(selectedDate);
-    d.setDate(d.getDate() + dir * (viewMode === "day" ? 1 : 7));
+    if (viewMode === "day") d.setDate(d.getDate() + dir);
+    else if (viewMode === "month") d.setMonth(d.getMonth() + dir);
+    else d.setDate(d.getDate() + dir * 7);
     setSelectedDate(d); setExpandedDays({});
   };
   const goToToday = () => { setSelectedDate(new Date()); setExpandedDays({}); };
@@ -652,6 +668,7 @@ function SecretaryRendezVous() {
     { to: "/sectasks", icon: <FaClipboardList />, label: "Tâches"},
     { to: "/secwaiting", icon: <FaUserClock />, label: "Salle d'attente" },
     { to: "/secpay", icon: <FaMoneyBillWave />, label: "Paiements"},
+    { to: "/secmail", icon: <FaEnvelope />, label: "Messagerie" },
     { to: "/secsettings", icon: <FaCog />, label: "Paramètres" },
   ];
 
@@ -752,13 +769,15 @@ function SecretaryRendezVous() {
               <p className="text-sm ml-11" style={{ color: "var(--text-2)" }}>
                 {viewMode === "day"
                   ? selectedDate.toLocaleDateString("fr-FR", { weekday: "long", year: "numeric", month: "long", day: "numeric" })
+                  : viewMode === "month"
+                  ? selectedDate.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })
                   : `Semaine du ${weekDates[0].toLocaleDateString("fr-FR", { day: "numeric", month: "long" })} au ${weekDates[5].toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}`}
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
               <div className="view-bar flex">
-                {[["day", "Jour"], ["week", "Semaine"]].map(([m, l]) => (
+                {[ ["day", "Jour"], ["week", "Semaine"], ["month", "Mois"] ].map(([m, l]) => (
                   <button key={m} onClick={() => handleViewModeChange(m)} className={`px-4 py-2 rounded-xl text-sm transition-all ${viewMode === m ? "view-btn-active" : "view-btn-idle"}`}>
                     {l}
                   </button>
@@ -971,6 +990,82 @@ function SecretaryRendezVous() {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {appointments.length > 0 && viewMode === "month" && (
+            <div className="bg-white rounded-2xl p-6" style={{ border: "1.5px solid var(--border)", boxShadow: "0 4px 24px rgba(6,13,31,0.06)" }} data-aos="fade-up">
+              <div className="flex items-center justify-between mb-5 pb-4" style={{ borderBottom: "1.5px solid #F0EEFF" }}>
+                <div>
+                  <p className="font-700 text-sm" style={{ fontWeight: 700, color: "var(--text-1)" }}>Planning mensuel</p>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--text-2)" }}>{selectedDate.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}</p>
+                </div>
+                <span className="px-3 py-1.5 rounded-xl text-xs chip-violet" style={{ fontWeight: 600 }}>{appointments.length} rendez-vous</span>
+              </div>
+
+              <div className="grid grid-cols-7 gap-2 mb-2 text-[11px] uppercase tracking-[0.12em]" style={{ color: "var(--text-2)", fontWeight: 700 }}>
+                {["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"].map((day) => (
+                  <div key={day} className="px-2 py-1 text-center">{day}</div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-7 gap-2">
+                {getMonthDates(selectedDate).map((date) => {
+                  const dateStr = fmtDate(date);
+                  const dayAppts = appointmentsByDate[dateStr] || [];
+                  const isCurrentMonth = date.getMonth() === selectedDate.getMonth();
+                  const today = isToday(date);
+
+                  return (
+                    <div
+                      key={dateStr}
+                      className="rounded-2xl p-3 min-h-[140px] border transition-all"
+                      style={{
+                        background: isCurrentMonth ? "#fff" : "#F8FAFF",
+                        borderColor: today ? "var(--violet)" : "#E2E8F0",
+                        boxShadow: today ? "0 0 0 3px rgba(139,92,246,0.16)" : "none",
+                        opacity: isCurrentMonth ? 1 : 0.55,
+                      }}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-7 h-7 rounded-xl flex items-center justify-center text-xs" style={{ background: today ? "#EEE8FF" : "#F8FAFF", color: today ? "var(--violet)" : "var(--text-1)", fontWeight: 700 }}>{date.getDate()}</span>
+                          {today && <span className="px-2 py-0.5 rounded-full text-[10px] chip-violet" style={{ fontWeight: 700 }}>Aujourd'hui</span>}
+                        </div>
+                        {dayAppts.length > 0 && <span className="px-2 py-0.5 rounded-full text-[10px] chip-violet" style={{ fontWeight: 600 }}>{dayAppts.length}</span>}
+                      </div>
+
+                      <div className="space-y-1.5">
+                        {dayAppts.slice(0, 3).map((appt) => {
+                          const patientName = appt.patient
+                            ? `${appt.patient.nom || ""} ${appt.patient.prenom || ""}`.trim()
+                            : `Patient #${appt.patient_id}`;
+                          return (
+                            <button
+                              key={appt.id}
+                              type="button"
+                              onClick={() => openDetailsModal(appt)}
+                              className="w-full text-left rounded-xl px-2.5 py-2 text-[11px] transition-all"
+                              style={{
+                                background: appt.status === "completed" ? "#ECFDF5" : appt.status === "cancelled" ? "#FFF1F2" : "#EEF4FF",
+                                color: appt.status === "completed" ? "#065F46" : appt.status === "cancelled" ? "#9F1239" : "#1E40AF",
+                              }}
+                            >
+                              <div className="font-700 truncate" style={{ fontWeight: 700 }}>{appt.start_time.substring(0, 5)} {patientName}</div>
+                              <div className="mt-0.5">{getStatusBadge(appt.status)}</div>
+                            </button>
+                          );
+                        })}
+                        {dayAppts.length > 3 && (
+                          <button type="button" onClick={() => openDetailsModal(dayAppts[3])} className="w-full text-left rounded-xl px-2.5 py-2 text-[11px] transition-all" style={{ background: "#F8FAFF", border: "1px dashed #CBD5E1", color: "var(--text-2)", fontWeight: 600 }}>
+                            +{dayAppts.length - 3} autres rendez-vous
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>

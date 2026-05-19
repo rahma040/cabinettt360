@@ -27,6 +27,7 @@ import {
   FaStethoscope,
   FaFilter,
   FaClipboardList,
+  FaEnvelope,
 } from "react-icons/fa";
 
 const API_BASE_URL = "http://127.0.0.1:8000/api";
@@ -402,10 +403,12 @@ function SecretaryPayments() {
   const navItems = [
     { to: "/secretariatdb", icon: <FaHome />, label: "Tableau de bord" },
     { to: "/secpatients", icon: <FaUserInjured />, label: "Patients" },
+    { to: "/seccreatepatient", icon: <FaUserPlus />, label: "Comptes patients" },
     { to: "/secretaryRendezvous", icon: <FaCalendarCheck />, label: "Rendez-vous" },
     { to: "/sectasks", icon: <FaClipboardList />, label: "Tâches"},
     { to: "/secwaiting", icon: <FaUserClock />, label: "Salle d'attente" },
     { to: "/secpay", icon: <FaMoneyBillWave />, label: "Paiements", active: true },
+    { to: "/secmail", icon: <FaEnvelope />, label: "Messagerie" },
     { to: "/secsettings", icon: <FaCog />, label: "Paramètres" },
   ];
 

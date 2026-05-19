@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use App\Models\User;
+use App\Models\Patient;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Validator;
@@ -194,6 +195,111 @@ class UsersController extends Controller
             'message' => 'Secrétaire créé avec succès',
             'secretary' => $secretary
         ], 201);
+    }
+
+    public function storePatientUser(Request $request)
+    {
+        try {
+            $actor = JWTAuth::parseToken()->authenticate();
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Non authentifié'], 401);
+        }
+
+        if (!in_array($actor->role, ['medecin', 'secretaire'])) {
+            return response()->json(['error' => 'Accès réservé aux médecins et secrétaires'], 403);
+        }
+
+        $doctorId = ($actor->role === 'secretaire') ? $actor->doctor_id : $actor->id;
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|string|min:8|max:12',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'role' => 'patient',
+            'doctor_id' => $doctorId,
+        ]);
+
+        // Create a Patient profile record linked by email
+        $names = explode(' ', trim($request->name), 2);
+        $nom = $names[0] ?? $request->name;
+        $prenom = $names[1] ?? '';
+
+        Patient::updateOrCreate([
+            'email' => $request->email,
+        ], [
+            'doctor_id' => $doctorId,
+            'nom' => $nom,
+            'prenom' => $prenom,
+            'telephone' => null,
+            'adresse' => null,
+        ]);
+
+        return response()->json([
+            'message' => 'Patient (compte) créé avec succès',
+            'patient_user' => $user
+        ], 201);
+    }
+
+    public function getMyPatientUsers()
+    {
+        try {
+            $actor = JWTAuth::parseToken()->authenticate();
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Non authentifié'], 401);
+        }
+
+        if (!in_array($actor->role, ['medecin', 'secretaire'])) {
+            return response()->json(['error' => 'Accès réservé aux médecins et secrétaires'], 403);
+        }
+
+        $doctorId = ($actor->role === 'secretaire') ? $actor->doctor_id : $actor->id;
+
+        $patients = User::where('doctor_id', $doctorId)
+                        ->where('role', 'patient')
+                        ->get(['id', 'name', 'email', 'created_at']);
+
+        return response()->json($patients);
+    }
+
+    public function destroyPatientUser($id)
+    {
+        try {
+            $actor = JWTAuth::parseToken()->authenticate();
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Non authentifié'], 401);
+        }
+
+        if (!in_array($actor->role, ['medecin', 'secretaire'])) {
+            return response()->json(['error' => 'Accès réservé aux médecins et secrétaires'], 403);
+        }
+
+        $doctorId = ($actor->role === 'secretaire') ? $actor->doctor_id : $actor->id;
+
+        $patientUser = User::where('id', $id)
+                           ->where('doctor_id', $doctorId)
+                           ->where('role', 'patient')
+                           ->first();
+
+        if (!$patientUser) {
+            return response()->json(['error' => 'Patient non trouvé'], 404);
+        }
+
+        // delete the related patient profile if exists
+        Patient::where('email', $patientUser->email)->where('doctor_id', $doctorId)->delete();
+
+        $patientUser->delete();
+
+        return response()->json(['message' => 'Compte patient supprimé avec succès']);
     }
 
     public function getMySecretaries()
