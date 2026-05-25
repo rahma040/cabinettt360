@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use OpenApi\Annotations as OA;
 use Illuminate\Http\Request;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
@@ -36,6 +37,18 @@ class AuthController extends Controller
             return response()->json(['error' => 'Token non fourni'], 401);
         }
     }
+
+    /**
+     * @OA\Get(
+     *   path="/current-user",
+     *   tags={"Auth"},
+     *   summary="Get authenticated user and integrity hash",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="User info", @OA\JsonContent(type="object", @OA\Property(property="id", type="integer"))),
+     *   @OA\Response(response=401, description="Token error or unauthenticated"),
+     *   @OA\Response(response=404, description="Utilisateur non trouvé")
+     * )
+     */
 
     private function generateIntegrityHash($user, $jti)
     {

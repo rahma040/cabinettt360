@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use OpenApi\Annotations as OA;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use App\Models\User;
@@ -58,6 +59,31 @@ class UsersController extends Controller
         ], 201);
     }
 
+    /**
+     * @OA\Post(
+     *   path="/register",
+     *   tags={"Auth"},
+     *   summary="Register a new user",
+    *   @OA\RequestBody(
+    *     required=true,
+    *     @OA\MediaType(
+    *       mediaType="application/json",
+    *       @OA\Schema(
+    *         type="object",
+    *         required={"name","email","password"},
+    *         @OA\Property(property="name", type="string", description="Full name", example="Sara Benali"),
+    *         @OA\Property(property="email", type="string", format="email", description="Email address", example="sara@example.com"),
+    *         @OA\Property(property="password", type="string", format="password", description="Password (8-12 chars)", example="secret123"),
+    *         @OA\Property(property="role", type="string", description="User role (admin, medecin, secretaire, patient)", example="patient"),
+    *         @OA\Property(property="licence_document", type="string", description="Base64 encoded file or multipart field for doctor licence (required if role=medecin)")
+    *       )
+    *     )
+    *   ),
+     *   @OA\Response(response=201, description="User registered", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=422, description="Validation error")
+     * )
+     */
+
     public function login(Request $request)
     {
         $request->validate([
@@ -88,6 +114,39 @@ class UsersController extends Controller
         ]);
     }
 
+    /**
+     * @OA\Post(
+     *   path="/login",
+     *   tags={"Auth"},
+     *   summary="Login user and return token",
+    *   @OA\RequestBody(
+    *     required=true,
+    *     @OA\MediaType(
+    *       mediaType="application/json",
+    *       @OA\Schema(
+    *         type="object",
+    *         required={"email","password"},
+    *         @OA\Property(property="email", type="string", format="email", description="Email address", example="sara@example.com"),
+    *         @OA\Property(property="password", type="string", format="password", description="Password", example="secret123")
+    *       )
+    *     )
+    *   ),
+     *   @OA\Response(response=200, description="Login successful", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Invalid credentials")
+     * )
+     */
+
+    /**
+     * @OA\Get(
+     *   path="/dashboard",
+     *   tags={"User"},
+     *   summary="Get the authenticated user's dashboard message",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="Dashboard data", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Token non fourni"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function dashboard(Request $request)
     {
         try {
@@ -139,6 +198,29 @@ class UsersController extends Controller
         }
     }
 
+    /**
+     * @OA\Post(
+     *   path="/logout",
+     *   tags={"Auth"},
+     *   summary="Logout current user (invalidate token)",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="Déconnexion réussie"),
+     *   @OA\Response(response=401, description="Token non fourni")
+     * )
+     */
+
+    /**
+     * @OA\Get(
+     *   path="/users",
+     *   tags={"User"},
+     *   summary="List all users",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="Users list", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=403, description="Unauthorized"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function index()
     {
         $admin = JWTAuth::parseToken()->authenticate();
@@ -149,11 +231,32 @@ class UsersController extends Controller
         return response()->json($users);
     }
 
+    /**
+     * @OA\Get(
+     *   path="/admin/users/total",
+     *   tags={"User"},
+     *   summary="Get total number of users",
+     *   @OA\Response(response=200, description="Total users", @OA\JsonContent(type="object", @OA\Property(property="total", type="integer", example=120))),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
+
     public function totalUsers()
     {
         $total = User::count();
         return response()->json(['total' => $total]);
     }
+
+    /**
+     * @OA\Get(
+     *   path="/admin/users/role/{role}",
+     *   tags={"User"},
+     *   summary="Get total number of users by role",
+     *   @OA\Parameter(name="role", in="path", required=true, @OA\Schema(type="string", example="patient")),
+     *   @OA\Response(response=200, description="Total users by role", @OA\JsonContent(type="object", @OA\Property(property="total", type="integer", example=42))),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
 
     public function totalByRole($role)
     {
@@ -161,6 +264,25 @@ class UsersController extends Controller
         return response()->json(['total' => $total]);
     }
 
+    /**
+     * @OA\Post(
+    *   path="/doctor/secretaries",
+     *   tags={"User"},
+     *   summary="Create a secretary account",
+     *   security={{"bearerAuth":{}}},
+    *   @OA\RequestBody(required=true, @OA\MediaType(mediaType="application/json", @OA\Schema(
+     *     required={"name","email","password"},
+     *     @OA\Property(property="name", type="string", example="Sara Benali"),
+     *     @OA\Property(property="email", type="string", format="email", example="sara@example.com"),
+     *     @OA\Property(property="password", type="string", format="password", example="Secret123")
+    *   ))),
+     *   @OA\Response(response=201, description="Secretary created", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=403, description="Accès réservé aux médecins"),
+     *   @OA\Response(response=422, description="Validation error"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function storeSecretary(Request $request)
     {
         try {
@@ -197,6 +319,25 @@ class UsersController extends Controller
         ], 201);
     }
 
+    /**
+     * @OA\Post(
+    *   path="/doctor/patients-users",
+     *   tags={"User"},
+     *   summary="Create a patient login account",
+     *   security={{"bearerAuth":{}}},
+    *   @OA\RequestBody(required=true, @OA\MediaType(mediaType="application/json", @OA\Schema(
+     *     required={"name","email","password"},
+     *     @OA\Property(property="name", type="string", example="Ali Hassan"),
+     *     @OA\Property(property="email", type="string", format="email", example="ali@example.com"),
+     *     @OA\Property(property="password", type="string", format="password", example="Patient123")
+    *   ))),
+     *   @OA\Response(response=201, description="Patient account created", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=403, description="Accès réservé aux médecins et secrétaires"),
+     *   @OA\Response(response=422, description="Validation error"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function storePatientUser(Request $request)
     {
         try {
@@ -250,6 +391,18 @@ class UsersController extends Controller
         ], 201);
     }
 
+    /**
+     * @OA\Get(
+    *   path="/doctor/patients-users",
+     *   tags={"User"},
+     *   summary="List patient accounts created by the doctor or secretary",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="Patient accounts list", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=403, description="Accès réservé aux médecins et secrétaires"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function getMyPatientUsers()
     {
         try {
@@ -271,6 +424,20 @@ class UsersController extends Controller
         return response()->json($patients);
     }
 
+    /**
+     * @OA\Delete(
+    *   path="/doctor/patients-users/{id}",
+     *   tags={"User"},
+     *   summary="Delete a patient account",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Response(response=200, description="Patient account deleted", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=403, description="Accès réservé aux médecins et secrétaires"),
+     *   @OA\Response(response=404, description="Patient non trouvé"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function destroyPatientUser($id)
     {
         try {
@@ -302,6 +469,18 @@ class UsersController extends Controller
         return response()->json(['message' => 'Compte patient supprimé avec succès']);
     }
 
+    /**
+     * @OA\Get(
+    *   path="/doctor/secretaries",
+     *   tags={"User"},
+     *   summary="List the doctor's secretaries",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="Secretaries list", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=403, description="Accès réservé aux médecins"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function getMySecretaries()
     {
         try {
@@ -321,6 +500,20 @@ class UsersController extends Controller
         return response()->json($secretaries);
     }
 
+    /**
+     * @OA\Delete(
+    *   path="/doctor/secretaries/{id}",
+     *   tags={"User"},
+     *   summary="Delete a secretary",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Response(response=200, description="Secretary deleted", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=403, description="Accès réservé aux médecins"),
+     *   @OA\Response(response=404, description="Secrétaire non trouvé"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function destroySecretary($id)
     {
         try {
@@ -347,6 +540,26 @@ class UsersController extends Controller
         return response()->json(['message' => 'Secrétaire supprimé avec succès']);
     }
 
+    /**
+     * @OA\Post(
+    *   path="/admin/users",
+     *   tags={"User"},
+     *   summary="Create a user as admin",
+     *   security={{"bearerAuth":{}}},
+    *   @OA\RequestBody(required=true, @OA\MediaType(mediaType="application/json", @OA\Schema(
+     *     required={"name","email","password","role"},
+     *     @OA\Property(property="name", type="string", example="Admin User"),
+     *     @OA\Property(property="email", type="string", format="email", example="admin2@example.com"),
+     *     @OA\Property(property="password", type="string", format="password", example="Admin123"),
+     *     @OA\Property(property="role", type="string", enum={"admin","medecin","secretaire","patient"}, example="patient")
+    *   ))),
+     *   @OA\Response(response=201, description="User created", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=403, description="Unauthorized"),
+     *   @OA\Response(response=422, description="Validation error"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function storeUser(Request $request)
     {
         $admin = JWTAuth::parseToken()->authenticate();
@@ -378,6 +591,27 @@ class UsersController extends Controller
         ], 201);
     }
 
+    /**
+     * @OA\Put(
+    *   path="/admin/users/{id}",
+     *   tags={"User"},
+     *   summary="Update a user as admin",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+    *   @OA\RequestBody(@OA\MediaType(mediaType="application/json", @OA\Schema(
+     *     @OA\Property(property="name", type="string", example="Updated name"),
+     *     @OA\Property(property="email", type="string", format="email", example="updated@example.com"),
+     *     @OA\Property(property="password", type="string", format="password", example="NewPass123"),
+     *     @OA\Property(property="role", type="string", enum={"admin","medecin","secretaire","patient"}, example="medecin")
+    *   ))),
+     *   @OA\Response(response=200, description="User updated", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=403, description="Unauthorized"),
+     *   @OA\Response(response=404, description="Utilisateur non trouvé"),
+     *   @OA\Response(response=422, description="Validation error"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function updateUser(Request $request, $id)
     {
         $admin = JWTAuth::parseToken()->authenticate();
@@ -413,6 +647,20 @@ class UsersController extends Controller
         ]);
     }
 
+    /**
+     * @OA\Delete(
+    *   path="/admin/users/{id}",
+     *   tags={"User"},
+     *   summary="Delete a user as admin",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Response(response=200, description="User deleted", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=403, description="Unauthorized"),
+     *   @OA\Response(response=404, description="Utilisateur non trouvé"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function destroyUser($id)
     {
         $admin = JWTAuth::parseToken()->authenticate();
@@ -434,6 +682,18 @@ class UsersController extends Controller
         return response()->json(['message' => 'Utilisateur supprimé']);
     }
 
+    /**
+     * @OA\Get(
+    *   path="/admin/unverified-doctors",
+     *   tags={"User"},
+     *   summary="List doctors waiting for verification",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="Doctors list", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=403, description="Unauthorized"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function getUnverifiedDoctors()
     {
         $admin = JWTAuth::parseToken()->authenticate();
@@ -448,6 +708,20 @@ class UsersController extends Controller
         return response()->json($doctors);
     }
 
+    /**
+     * @OA\Put(
+    *   path="/admin/verify-doctor/{id}",
+     *   tags={"User"},
+     *   summary="Verify a doctor account",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Response(response=200, description="Doctor verified", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=403, description="Unauthorized"),
+     *   @OA\Response(response=404, description="Médecin non trouvé"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function verifyDoctor($id)
     {
         try {
@@ -471,6 +745,20 @@ class UsersController extends Controller
         }
     }
 
+    /**
+     * @OA\Get(
+    *   path="/admin/doctor-document/{id}",
+     *   tags={"User"},
+     *   summary="View a doctor's licence document",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Response(response=200, description="File response"),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=403, description="Unauthorized"),
+     *   @OA\Response(response=404, description="Document non trouvé"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function viewLicenceDocument(Request $request, $id)
         {
             try {
@@ -499,7 +787,7 @@ class UsersController extends Controller
                 }
 
                 $file = \Storage::disk('public')->get($doctor->licence_document);
-                $mime = \Storage::disk('public')->mimeType($doctor->licence_document);
+                $mime = \File::mimeType(storage_path('app/public/' . $doctor->licence_document));
 
                 return response($file, 200)
                     ->header('Content-Type', $mime)
@@ -555,4 +843,17 @@ class UsersController extends Controller
                 'user' => $user->makeHidden(['password', 'created_at', 'updated_at', 'licence_document']),
             ]);
         }
+
+    /**
+     * @OA\Put(
+     *   path="/auth/update",
+     *   tags={"Auth"},
+     *   summary="Update authenticated user's profile",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\RequestBody(@OA\JsonContent(type="object")),
+     *   @OA\Response(response=200, description="Profile updated", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=422, description="Validation error")
+     * )
+     */
 }

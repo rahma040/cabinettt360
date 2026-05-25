@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use OpenApi\Annotations as OA;
 use App\Models\PrescriptionTemplate;
 use Illuminate\Http\Request;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -20,6 +21,17 @@ class PrescriptionTemplateController extends Controller
     }
 
 
+    /**
+     * @OA\Get(
+     *   path="/prescription-templates",
+     *   tags={"PrescriptionTemplate"},
+     *   summary="List prescription templates",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="Templates list", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function index()
     {
         if (!$this->user) {
@@ -34,6 +46,23 @@ class PrescriptionTemplateController extends Controller
     }
 
 
+    /**
+     * @OA\Post(
+     *   path="/prescription-templates",
+     *   tags={"PrescriptionTemplate"},
+     *   summary="Create a prescription template",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\RequestBody(required=true, @OA\JsonContent(
+     *     required={"name","template_data"},
+     *     @OA\Property(property="name", type="string", example="Standard consult"),
+     *     @OA\Property(property="template_data", type="string", example="{\"diagnostic\":\"...\"}")
+     *   )),
+     *   @OA\Response(response=201, description="Template created", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=422, description="Validation error"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function store(Request $request)
     {
         if (!$this->user) {
@@ -55,6 +84,19 @@ class PrescriptionTemplateController extends Controller
     }
 
 
+    /**
+     * @OA\Get(
+     *   path="/prescription-templates/{id}",
+     *   tags={"PrescriptionTemplate"},
+     *   summary="Get a prescription template",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Response(response=200, description="Template details", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=404, description="Modèle non trouvé"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function show($id)
     {
         if (!$this->user) {
@@ -73,6 +115,24 @@ class PrescriptionTemplateController extends Controller
     }
 
 
+    /**
+     * @OA\Put(
+     *   path="/prescription-templates/{id}",
+     *   tags={"PrescriptionTemplate"},
+     *   summary="Update a prescription template",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\RequestBody(@OA\JsonContent(
+     *     @OA\Property(property="name", type="string", example="Updated template name"),
+     *     @OA\Property(property="template_data", type="string", example="{\"diagnostic\":\"...\"}")
+     *   )),
+     *   @OA\Response(response=200, description="Template updated", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=404, description="Modèle non trouvé"),
+     *   @OA\Response(response=422, description="Validation error"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function update(Request $request, $id)
     {
         if (!$this->user) {
@@ -104,6 +164,19 @@ class PrescriptionTemplateController extends Controller
     }
 
 
+    /**
+     * @OA\Delete(
+     *   path="/prescription-templates/{id}",
+     *   tags={"PrescriptionTemplate"},
+     *   summary="Delete a prescription template",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Response(response=200, description="Template deleted", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=404, description="Modèle non trouvé"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function destroy($id)
     {
         if (!$this->user) {

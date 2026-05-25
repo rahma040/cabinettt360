@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
+import PropTypes from "prop-types";
 import axios from "axios";
 import { FaTimes, FaCheck, FaBan } from "react-icons/fa";
 
@@ -205,3 +206,12 @@ const NotificationModal = ({
 };
 
 export default NotificationModal;
+
+NotificationModal.propTypes = {
+  isOpen: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  onActionComplete: PropTypes.func,
+  messageNotifications: PropTypes.array,
+  unreadMessageCount: PropTypes.number,
+  onOpenMessages: PropTypes.func,
+};

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use OpenApi\Annotations as OA;
 use Illuminate\Http\Request;
 use App\Models\Communication;
 use App\Models\User;
@@ -21,6 +22,25 @@ class CommunicationController extends Controller
         }
     }
 
+    /**
+     * @OA\Post(
+     *   path="/communications",
+     *   tags={"Communication"},
+     *   summary="Send a communication message",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\RequestBody(required=true, @OA\JsonContent(
+     *     required={"message"},
+     *     @OA\Property(property="message", type="string", example="Bonjour, voici le dossier demandé."),
+     *     @OA\Property(property="recipient_id", type="integer", example=12),
+     *     @OA\Property(property="recipient_email", type="string", format="email", example="secretary@example.com"),
+     *     @OA\Property(property="files", type="array", @OA\Items(type="string", format="binary"))
+     *   )),
+     *   @OA\Response(response=201, description="Message sent", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Unauthenticated"),
+     *   @OA\Response(response=422, description="Validation error"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function store(Request $request)
     {
         $user = $this->resolveUser($request);
@@ -112,6 +132,21 @@ class CommunicationController extends Controller
         ], 201);
     }
 
+    /**
+     * @OA	ag(name="Communication", description="Internal messaging and notifications")
+     */
+
+    /**
+     * @OA\Get(
+     *   path="/communications",
+     *   tags={"Communication"},
+     *   summary="List communications for the authenticated user",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="Communications list", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *   @OA\Response(response=401, description="Unauthenticated"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function index(Request $request)
     {
         $user = $this->resolveUser($request);
@@ -149,6 +184,17 @@ class CommunicationController extends Controller
         return response()->json($communications);
     }
 
+    /**
+     * @OA\Get(
+     *   path="/communications/contacts",
+     *   tags={"Communication"},
+     *   summary="List message contacts",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="Contacts list", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *   @OA\Response(response=401, description="Unauthenticated"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function contacts(Request $request)
     {
         $user = $this->resolveUser($request);
@@ -188,6 +234,17 @@ class CommunicationController extends Controller
         return response()->json($contacts);
     }
 
+    /**
+     * @OA\Get(
+     *   path="/communications/unread-count",
+     *   tags={"Communication"},
+     *   summary="Get unread communications count",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="Unread count", @OA\JsonContent(type="object", @OA\Property(property="count", type="integer", example=3))),
+     *   @OA\Response(response=401, description="Unauthenticated"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function unreadCount(Request $request)
     {
         $user = $this->resolveUser($request);
@@ -206,6 +263,17 @@ class CommunicationController extends Controller
         return response()->json(['count' => $count]);
     }
 
+    /**
+     * @OA\Get(
+     *   path="/communications/notifications",
+     *   tags={"Communication"},
+     *   summary="List unread communication notifications",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="Notifications list", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *   @OA\Response(response=401, description="Unauthenticated"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function notifications(Request $request)
     {
         $user = $this->resolveUser($request);
@@ -238,6 +306,19 @@ class CommunicationController extends Controller
         return response()->json($items);
     }
 
+    /**
+     * @OA\Post(
+     *   path="/communications/{id}/mark-read",
+     *   tags={"Communication"},
+     *   summary="Mark a communication as read",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Response(response=200, description="Marked as read", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Unauthenticated"),
+     *   @OA\Response(response=404, description="Message not found"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function markRead(Request $request, $id)
     {
         $user = $this->resolveUser($request);
@@ -262,6 +343,21 @@ class CommunicationController extends Controller
         return response()->json(['message' => 'Notification marquée comme lue']);
     }
 
+    /**
+     * @OA\Get(
+     *   path="/communications/{id}/view/{index}",
+     *   tags={"Communication"},
+     *   summary="View an attached communication file",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Parameter(name="index", in="path", required=false, @OA\Schema(type="integer", default=0)),
+     *   @OA\Response(response=200, description="File response"),
+     *   @OA\Response(response=401, description="Unauthenticated"),
+     *   @OA\Response(response=403, description="Unauthorized"),
+     *   @OA\Response(response=404, description="File not found"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function view(Request $request, $id, $index = 0)
     {
         $user = $this->resolveUser($request);
@@ -294,6 +390,21 @@ class CommunicationController extends Controller
         ]);
     }
 
+    /**
+     * @OA\Get(
+     *   path="/communications/{id}/download/{index}",
+     *   tags={"Communication"},
+     *   summary="Download an attached communication file",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Parameter(name="index", in="path", required=false, @OA\Schema(type="integer", default=0)),
+     *   @OA\Response(response=200, description="File download"),
+     *   @OA\Response(response=401, description="Unauthenticated"),
+     *   @OA\Response(response=403, description="Unauthorized"),
+     *   @OA\Response(response=404, description="File not found"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function download(Request $request, $id, $index = 0)
     {
         $user = $this->resolveUser($request);

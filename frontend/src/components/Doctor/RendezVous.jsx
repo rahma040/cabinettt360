@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import AOS from "aos";
@@ -270,13 +270,13 @@ function RendezVous() {
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
   const integrityInterval = useRef(null);
 
-  const getToken = () => localStorage.getItem("token");
+  const getToken = useCallback(() => localStorage.getItem("token"), []);
 
-  const isAuthenticated = () => {
+  const isAuthenticated = useCallback(() => {
     const token = getToken();
     const userData = localStorage.getItem("user");
     return token && userData;
-  };
+  }, [getToken]);
 
   const navItems = [
     { to: "/docdb", icon: <FaHome />, label: "Tableau de bord" },
@@ -292,46 +292,16 @@ function RendezVous() {
     { to: "/docsettings", icon: <FaCog />, label: "Paramètres" },
   ];
 
-  useEffect(() => {
-    AOS.init({ duration: 800, once: true, easing: "ease-out-cubic" });
-    if (!isAuthenticated()) {
-      navigate("/login");
-      return;
+  const fetchPendingRequests = useCallback(async () => {
+    try {
+      const response = await api.get("/appointments");
+      setPendingRequestsCount((Array.isArray(response.data) ? response.data : []).filter((item) => item.request_status === "pending").length);
+    } catch (err) {
+      console.error("Failed to fetch pending requests:", err);
     }
-    const userData = localStorage.getItem("user");
-    setUser(JSON.parse(userData));
+  }, []);
 
-    performIntegrityCheck(navigate, setError, true)
-      .then(() => {
-        fetchCurrentUser();
-        fetchPatients();
-      })
-      .catch(() => setLoading(false));
-
-    integrityInterval.current = setInterval(() => {
-      performIntegrityCheck(navigate, setError, false);
-    }, 15000);
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        performIntegrityCheck(navigate, setError, false);
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      if (integrityInterval.current) clearInterval(integrityInterval.current);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [navigate]);
-
-  useEffect(() => {
-    if (doctorInfo) {
-      fetchAppointments();
-    }
-  }, [doctorInfo, selectedDate, viewMode]);
-
-  const fetchCurrentUser = async () => {
+  const fetchCurrentUser = useCallback(async () => {
     const token = getToken();
     if (!token) {
       navigate("/login");
@@ -357,9 +327,25 @@ function RendezVous() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate, getToken]);
 
-  const fetchAppointments = async () => {
+  const fetchPatients = useCallback(async () => {
+    const token = getToken();
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/patients`, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } });
+      if (res.ok) {
+        const json = await res.json();
+        setPatients(json);
+      } else if (res.status === 401) {
+        clearAndRedirect(navigate);
+      }
+    } catch (err) {
+      console.error("Failed to fetch patients:", err);
+    }
+  }, [navigate, getToken]);
+
+  const fetchAppointments = useCallback(async () => {
     const token = getToken();
     if (!token) return;
     setError(null);
@@ -398,16 +384,46 @@ function RendezVous() {
     } finally {
       await fetchPendingRequests();
     }
-  };
+  }, [navigate, selectedDate, viewMode, getToken, fetchPendingRequests]);
 
-  const fetchPendingRequests = async () => {
-    try {
-      const response = await api.get("/appointments");
-      setPendingRequestsCount((Array.isArray(response.data) ? response.data : []).filter((item) => item.request_status === "pending").length);
-    } catch (err) {
-      console.error("Failed to fetch pending requests:", err);
+  useEffect(() => {
+    AOS.init({ duration: 800, once: true, easing: "ease-out-cubic" });
+    if (!isAuthenticated()) {
+      navigate("/login");
+      return;
     }
-  };
+    const userData = localStorage.getItem("user");
+    setUser(JSON.parse(userData));
+
+    performIntegrityCheck(navigate, setError, true)
+      .then(() => {
+        fetchCurrentUser();
+        fetchPatients();
+      })
+      .catch(() => setLoading(false));
+
+    integrityInterval.current = setInterval(() => {
+      performIntegrityCheck(navigate, setError, false);
+    }, 15000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        performIntegrityCheck(navigate, setError, false);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      if (integrityInterval.current) clearInterval(integrityInterval.current);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [navigate, fetchCurrentUser, fetchPatients, isAuthenticated]);
+
+  useEffect(() => {
+    if (doctorInfo) {
+      fetchAppointments();
+    }
+  }, [doctorInfo, fetchAppointments]);
 
   useEffect(() => {
     const token = getToken();
@@ -416,7 +432,7 @@ function RendezVous() {
     fetchPendingRequests();
     const interval = setInterval(fetchPendingRequests, 15000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchPendingRequests, getToken]);
 
   const getStatusBadge = (status) => {
     if (status === "completed")
@@ -494,22 +510,6 @@ function RendezVous() {
     const id = Date.now() + Math.random();
     setToasts((prev) => [...prev, { id, message, type }]);
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
-  };
-
-  const fetchPatients = async () => {
-    const token = getToken();
-    if (!token) return;
-    try {
-      const res = await fetch(`${API_BASE_URL}/patients`, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } });
-      if (res.ok) {
-        const json = await res.json();
-        setPatients(json);
-      } else if (res.status === 401) {
-        clearAndRedirect(navigate);
-      }
-    } catch (err) {
-      console.error("Failed to fetch patients:", err);
-    }
   };
 
   const checkExistingPatient = (name) => {
@@ -805,7 +805,7 @@ function RendezVous() {
                     fontWeight: 700,
                   }}
                 >
-                  Aujourd'hui
+                            Aujourd&apos;hui
                 </button>
                 <button
                   onClick={() => changeDate(1)}
@@ -1058,7 +1058,7 @@ function RendezVous() {
                               fontSize: 10,
                             }}
                           >
-                            Aujourd'hui
+                            Aujourd&apos;hui
                           </span>
                         )}
                         {dayAppts.length > 0 && (
@@ -1225,7 +1225,7 @@ function RendezVous() {
                           </span>
                           {today && (
                             <span className="px-2 py-0.5 rounded-full text-[10px] chip-violet" style={{ fontWeight: 700 }}>
-                              Aujourd'hui
+                              Aujourd&apos;hui
                             </span>
                           )}
                         </div>

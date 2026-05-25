@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
+use OpenApi\Annotations as OA;
 use App\Models\Visite;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -9,6 +10,19 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 
 class SecretaryPaymentController extends Controller
 {
+    /**
+     * @OA\Get(
+     *   path="/secretary/payments",
+     *   tags={"SecretaryPayment"},
+     *   summary="List unpaid visits for the secretary's doctor",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="Unpaid visits", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *   @OA\Response(response=400, description="Secrétaire non rattaché à un médecin"),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=403, description="Non autorisé"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function index(Request $request)
     {
         try {
@@ -38,6 +52,21 @@ class SecretaryPaymentController extends Controller
         }
     }
     
+    /**
+     * @OA\Post(
+     *   path="/secretary/payments/{visiteId}/finalize",
+     *   tags={"SecretaryPayment"},
+     *   summary="Finalize a payment",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="visiteId", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Response(response=200, description="Payment finalized", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=400, description="Secrétaire non rattaché à un médecin"),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=403, description="Non autorisé"),
+     *   @OA\Response(response=404, description="Visite non trouvée"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function finalize(Request $request, $visiteId)
     {
         try {
@@ -85,6 +114,19 @@ class SecretaryPaymentController extends Controller
         }
     }
 
+    /**
+     * @OA\Get(
+     *   path="/secretary/payments/paid",
+     *   tags={"SecretaryPayment"},
+     *   summary="List paid visits",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="Paid visits", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *   @OA\Response(response=400, description="Secrétaire non rattaché à un médecin"),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=403, description="Non autorisé"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function paid(Request $request)
     {
         try {

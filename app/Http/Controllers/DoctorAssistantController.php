@@ -2,12 +2,31 @@
 
 namespace App\Http\Controllers;
 
+use OpenApi\Annotations as OA;
 use App\Services\DoctorAssistantService;
 use Illuminate\Http\Request;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class DoctorAssistantController extends Controller
 {
+    /**
+     * @OA\Post(
+     *   path="/doctor/assistant/chat",
+     *   tags={"DoctorAssistant"},
+     *   summary="Chat with the doctor assistant",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\RequestBody(required=true, @OA\JsonContent(
+     *     required={"message"},
+     *     @OA\Property(property="message", type="string", example="Summarize my pending appointments"),
+     *     @OA\Property(property="history", type="array", @OA\Items(type="object"))
+     *   )),
+     *   @OA\Response(response=200, description="Assistant response", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=403, description="Accès réservé aux médecins"),
+     *   @OA\Response(response=422, description="Validation error"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function chat(Request $request, DoctorAssistantService $assistant)
     {
         try {

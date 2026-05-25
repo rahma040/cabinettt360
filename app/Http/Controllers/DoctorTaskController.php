@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use OpenApi\Annotations as OA;
 use App\Models\DoctorTask;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -32,6 +33,17 @@ class DoctorTaskController extends Controller
         return null;
     }
 
+    /**
+     * @OA\Get(
+    *   path="/doctor/tasks",
+     *   tags={"DoctorTask"},
+     *   summary="List tasks for the current doctor",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="Task list", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *   @OA\Response(response=401, description="Unauthorized"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function index(Request $request)
     {
         $user = $this->getAuthenticatedUser();
@@ -51,6 +63,27 @@ class DoctorTaskController extends Controller
         return response()->json($tasks);
     }
 
+    /**
+     * @OA\Post(
+    *   path="/doctor/tasks",
+     *   tags={"DoctorTask"},
+     *   summary="Create a task",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\RequestBody(required=true, @OA\JsonContent(
+     *     required={"task","time","priority","status"},
+     *     @OA\Property(property="task", type="string", example="Call patient and review results"),
+     *     @OA\Property(property="time", type="string", format="date-time", example="2026-05-25T10:30:00Z"),
+     *     @OA\Property(property="priority", type="string", enum={"low","medium","high"}, example="high"),
+     *     @OA\Property(property="status", type="string", enum={"pending","done","cancelled"}, example="pending"),
+     *     @OA\Property(property="note", type="string", example="Bring previous lab tests")
+     *   )),
+     *   @OA\Response(response=201, description="Task created", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Unauthorized"),
+     *   @OA\Response(response=403, description="Forbidden"),
+     *   @OA\Response(response=422, description="Validation error"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function store(Request $request)
     {
         $user = $this->getAuthenticatedUser();
@@ -86,6 +119,27 @@ class DoctorTaskController extends Controller
         return response()->json($task, 201);
     }
 
+    /**
+     * @OA\Put(
+    *   path="/doctor/tasks/{id}",
+     *   tags={"DoctorTask"},
+     *   summary="Update a task",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\RequestBody(@OA\JsonContent(
+     *     @OA\Property(property="task", type="string", example="Updated task title"),
+     *     @OA\Property(property="time", type="string", format="date-time", example="2026-05-25T11:00:00Z"),
+     *     @OA\Property(property="priority", type="string", enum={"low","medium","high"}, example="medium"),
+     *     @OA\Property(property="status", type="string", enum={"pending","done","cancelled"}, example="done"),
+     *     @OA\Property(property="note", type="string", example="Updated note")
+     *   )),
+     *   @OA\Response(response=200, description="Task updated", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Unauthorized"),
+     *   @OA\Response(response=404, description="Task not found"),
+     *   @OA\Response(response=422, description="Validation error"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function update(Request $request, $id)
     {
         $user = $this->getAuthenticatedUser();
@@ -131,6 +185,20 @@ class DoctorTaskController extends Controller
         return response()->json($task);
     }
 
+    /**
+     * @OA\Delete(
+    *   path="/doctor/tasks/{id}",
+     *   tags={"DoctorTask"},
+     *   summary="Delete a task",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Response(response=200, description="Task deleted", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Unauthorized"),
+     *   @OA\Response(response=403, description="Forbidden"),
+     *   @OA\Response(response=404, description="Task not found"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function destroy(Request $request, $id)
     {
         $user = $this->getAuthenticatedUser();

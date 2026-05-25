@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
+use OpenApi\Annotations as OA;
 use App\Models\Patient;
 use App\Models\Visite;
 use App\Models\Appointment;
@@ -31,6 +32,18 @@ class StatisticsController extends Controller
         return $user->id;
     }
 
+    /**
+     * @OA\Get(
+    *   path="/doctor/statistics/overview",
+     *   tags={"Statistics"},
+     *   summary="Get dashboard overview statistics",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="Overview stats", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=400, description="Médecin non trouvé"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function overview()
     {
         $user = $this->getAuthenticatedUser();
@@ -116,6 +129,19 @@ class StatisticsController extends Controller
         ]);
     }
 
+    /**
+     * @OA\Get(
+    *   path="/doctor/statistics/visits-timeline",
+     *   tags={"Statistics"},
+     *   summary="Get visits timeline",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="period", in="query", required=false, @OA\Schema(type="string", enum={"week","month","year"})),
+     *   @OA\Response(response=200, description="Visits timeline", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=400, description="Médecin non trouvé"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function visitsTimeline(Request $request)
     {
         $user = $this->getAuthenticatedUser();
@@ -147,6 +173,19 @@ class StatisticsController extends Controller
         return response()->json($visits);
     }
 
+    /**
+     * @OA\Get(
+    *   path="/doctor/statistics/revenue-timeline",
+     *   tags={"Statistics"},
+     *   summary="Get revenue timeline",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="period", in="query", required=false, @OA\Schema(type="string", enum={"week","month","year"})),
+     *   @OA\Response(response=200, description="Revenue timeline", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=400, description="Médecin non trouvé"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function revenueTimeline(Request $request)
     {
         $user = $this->getAuthenticatedUser();
@@ -180,6 +219,18 @@ class StatisticsController extends Controller
         return response()->json($revenue);
     }
 
+    /**
+     * @OA\Get(
+    *   path="/doctor/statistics/payment-distribution",
+     *   tags={"Statistics"},
+     *   summary="Get payment distribution",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="Payment distribution", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=400, description="Médecin non trouvé"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function paymentDistribution()
     {
         $user = $this->getAuthenticatedUser();
@@ -199,6 +250,18 @@ class StatisticsController extends Controller
         ]);
     }
 
+    /**
+     * @OA\Get(
+    *   path="/doctor/statistics/appointment-distribution",
+     *   tags={"Statistics"},
+     *   summary="Get appointment distribution",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="Appointment distribution", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=400, description="Médecin non trouvé"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function appointmentDistribution()
     {
         $user = $this->getAuthenticatedUser();
@@ -218,6 +281,19 @@ class StatisticsController extends Controller
         ]);
     }
 
+    /**
+     * @OA\Get(
+    *   path="/doctor/statistics/top-patients",
+     *   tags={"Statistics"},
+     *   summary="Get top patients",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="limit", in="query", required=false, @OA\Schema(type="integer", example=5)),
+     *   @OA\Response(response=200, description="Top patients", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=400, description="Médecin non trouvé"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function topPatients(Request $request)
     {
         $user = $this->getAuthenticatedUser();
@@ -237,6 +313,18 @@ class StatisticsController extends Controller
         return response()->json($topPatients);
     }
 
+    /**
+     * @OA\Get(
+    *   path="/doctor/statistics/age-distribution",
+     *   tags={"Statistics"},
+     *   summary="Get patient age distribution",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="Age distribution", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=400, description="Médecin non trouvé"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function ageDistribution()
     {
         $user = $this->getAuthenticatedUser();
@@ -264,6 +352,18 @@ class StatisticsController extends Controller
         );
     }
 
+    /**
+     * @OA\Get(
+    *   path="/doctor/statistics/monthly-comparison",
+     *   tags={"Statistics"},
+     *   summary="Get monthly comparison",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="Monthly comparison", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=400, description="Médecin non trouvé"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function monthlyComparison()
     {
         $user = $this->getAuthenticatedUser();
@@ -304,6 +404,18 @@ class StatisticsController extends Controller
         return response()->json($months);
     }
 
+    /**
+     * @OA\Get(
+    *   path="/doctor/statistics/visits-by-day",
+     *   tags={"Statistics"},
+     *   summary="Get visits by day of week",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="Visits by day", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=400, description="Médecin non trouvé"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function visitsByDayOfWeek()
     {
         $user = $this->getAuthenticatedUser();
@@ -332,6 +444,18 @@ class StatisticsController extends Controller
         return response()->json($result);
     }
 
+    /**
+     * @OA\Get(
+    *   path="/doctor/statistics/visit-status",
+     *   tags={"Statistics"},
+     *   summary="Get visit status distribution",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="Visit status distribution", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=400, description="Médecin non trouvé"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function visitStatusDistribution()
     {
         $user = $this->getAuthenticatedUser();
@@ -351,6 +475,18 @@ class StatisticsController extends Controller
         ]);
     }
 
+    /**
+     * @OA\Get(
+    *   path="/doctor/statistics/revenue-by-month",
+     *   tags={"Statistics"},
+     *   summary="Get revenue by month",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="Revenue by month", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=400, description="Médecin non trouvé"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function revenueByMonth()
     {
         $user = $this->getAuthenticatedUser();
@@ -376,6 +512,18 @@ class StatisticsController extends Controller
         return response()->json($data);
     }
 
+    /**
+     * @OA\Get(
+    *   path="/doctor/statistics/blood-group-distribution",
+     *   tags={"Statistics"},
+     *   summary="Get blood group distribution",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="Blood group distribution", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=400, description="Médecin non trouvé"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function bloodGroupDistribution()
     {
         $user = $this->getAuthenticatedUser();
@@ -396,6 +544,18 @@ class StatisticsController extends Controller
         );
     }
 
+    /**
+     * @OA\Get(
+    *   path="/doctor/statistics/recent-activity",
+     *   tags={"Statistics"},
+     *   summary="Get recent activity",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="Recent activity", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=400, description="Médecin non trouvé"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function recentActivity()
     {
         $user = $this->getAuthenticatedUser();
@@ -421,6 +581,18 @@ class StatisticsController extends Controller
         ]);
     }
 
+    /**
+     * @OA\Get(
+     *   path="/admin/dashboard",
+     *   tags={"Statistics"},
+     *   summary="Get admin dashboard statistics",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="Admin dashboard", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=403, description="Unauthorized"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function adminDashboard()
     {
         try {

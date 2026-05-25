@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use OpenApi\Annotations as OA;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
@@ -13,6 +14,25 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 
 class PasswordResetController extends Controller
 {
+    /**
+     * @OA\Post(
+     *   path="/password-reset-request",
+     *   tags={"PasswordReset"},
+     *   summary="Create a password reset request",
+     *   @OA\RequestBody(required=true, @OA\JsonContent(
+     *     required={"login_email","contact_method"},
+     *     @OA\Property(property="login_email", type="string", format="email", example="user@example.com"),
+     *     @OA\Property(property="contact_method", type="string", enum={"email","phone"}, example="email"),
+     *     @OA\Property(property="contact_email", type="string", format="email", example="contact@example.com"),
+     *     @OA\Property(property="contact_phone", type="string", example="0612345678"),
+     *     @OA\Property(property="message", type="string", example="Please help reset my password")
+     *   )),
+     *   @OA\Response(response=200, description="Request created", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=404, description="No matching account"),
+     *   @OA\Response(response=422, description="Validation error"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function sendRequest(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -72,6 +92,18 @@ class PasswordResetController extends Controller
         ], 200);
     }
 
+    /**
+     * @OA\Get(
+     *   path="/admin/password-reset-requests",
+     *   tags={"PasswordReset"},
+     *   summary="List password reset requests",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="Requests list", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=403, description="Unauthorized"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function getPendingRequests()
     {
         try {
@@ -88,6 +120,21 @@ class PasswordResetController extends Controller
         }
     }
 
+    /**
+     * @OA\Get(
+     *   path="/admin/get-user-by-email",
+     *   tags={"PasswordReset"},
+     *   summary="Find a user by login email",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="login_email", in="query", required=true, @OA\Schema(type="string", format="email")),
+     *   @OA\Response(response=200, description="User found", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=403, description="Unauthorized"),
+     *   @OA\Response(response=404, description="User not found"),
+     *   @OA\Response(response=422, description="Validation error"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function getUserByLoginEmail(Request $request)
     {
         try {
@@ -115,6 +162,25 @@ class PasswordResetController extends Controller
         }
     }
 
+    /**
+     * @OA\Post(
+     *   path="/admin/reset-password",
+     *   tags={"PasswordReset"},
+     *   summary="Reset a user's password",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\RequestBody(required=true, @OA\JsonContent(
+     *     required={"user_id","new_password"},
+     *     @OA\Property(property="user_id", type="integer", example=42),
+     *     @OA\Property(property="new_password", type="string", format="password", example="NewPass123"),
+     *     @OA\Property(property="request_id", type="integer", example=7)
+     *   )),
+     *   @OA\Response(response=200, description="Password reset", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=403, description="Unauthorized"),
+     *   @OA\Response(response=422, description="Validation error"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function resetUserPassword(Request $request)
     {
         try {
@@ -178,6 +244,19 @@ class PasswordResetController extends Controller
         }
     }
 
+    /**
+     * @OA\Get(
+     *   path="/admin/search-users",
+     *   tags={"PasswordReset"},
+     *   summary="Search users for password reset",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="search", in="query", required=false, @OA\Schema(type="string")),
+     *   @OA\Response(response=200, description="Users list", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=403, description="Unauthorized"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function searchUsers(Request $request)
     {
         try {

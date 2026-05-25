@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use OpenApi\Annotations as OA;
 use App\Services\GeminiService;
 use App\Services\PatientContextService;
 use Illuminate\Http\Request;
@@ -10,6 +11,31 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 
 class PatientContextController extends Controller
 {
+    /**
+     * @OA\Post(
+     *   path="/doctor/patient-context/ask",
+     *   tags={"PatientContext"},
+     *   summary="Ask a question about a patient's context",
+     *   security={{"bearerAuth":{}}},
+    *   @OA\RequestBody(
+    *     required=true,
+    *     @OA\MediaType(
+    *       mediaType="application/json",
+    *       @OA\Schema(
+    *         type="object",
+    *         required={"patient_id","question"},
+    *         @OA\Property(property="patient_id", type="integer", example=12, description="ID of the patient to query"),
+    *         @OA\Property(property="question", type="string", example="Summarize the latest visits and prescriptions", description="Free-text question for the assistant")
+    *       )
+    *     )
+    *   ),
+     *   @OA\Response(response=200, description="Assistant answer", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Unauthenticated"),
+     *   @OA\Response(response=403, description="Access restricted to doctors"),
+     *   @OA\Response(response=422, description="Validation error"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function ask(Request $request, PatientContextService $contextService, GeminiService $geminiService)
     {
         // Authenticate user

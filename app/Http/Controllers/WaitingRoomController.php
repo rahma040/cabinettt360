@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use OpenApi\Annotations as OA;
 use App\Models\WaitingRoom;
 use App\Models\Patient;
 use App\Models\Appointment;
@@ -30,6 +31,17 @@ class WaitingRoomController extends Controller
         return $user->id;
     }
 
+    /**
+     * @OA\Get(
+     *   path="/waiting-room",
+     *   tags={"WaitingRoom"},
+     *   summary="List active waiting room entries",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="Waiting room entries", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function index()
     {
         $user = $this->getCurrentUser();
@@ -54,6 +66,17 @@ class WaitingRoomController extends Controller
     }
 
 
+    /**
+     * @OA\Get(
+     *   path="/waiting-room/available-patients",
+     *   tags={"WaitingRoom"},
+     *   summary="List available patients for waiting room",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="Available patients", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function availablePatients()
     {
         $user = $this->getCurrentUser();
@@ -101,6 +124,26 @@ class WaitingRoomController extends Controller
         }
     }
 
+    /**
+     * @OA\Post(
+     *   path="/waiting-room",
+     *   tags={"WaitingRoom"},
+     *   summary="Add a patient to waiting room",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\RequestBody(required=true, @OA\JsonContent(
+     *     required={"patient_id","slot"},
+     *     @OA\Property(property="patient_id", type="integer", example=12),
+     *     @OA\Property(property="appointment_id", type="integer", example=22),
+     *     @OA\Property(property="slot", type="integer", example=4)
+     *   )),
+     *   @OA\Response(response=201, description="Waiting room entry created", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=400, description="Slot occupied or duplicate patient"),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=404, description="Patient non trouvé"),
+     *   @OA\Response(response=422, description="Validation error"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function store(Request $request)
     {
         $user = $this->getCurrentUser();
@@ -160,6 +203,24 @@ class WaitingRoomController extends Controller
     }
 
 
+    /**
+     * @OA\Put(
+     *   path="/waiting-room/{id}",
+     *   tags={"WaitingRoom"},
+     *   summary="Update waiting room status",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\RequestBody(required=true, @OA\JsonContent(
+     *     required={"status"},
+     *     @OA\Property(property="status", type="string", enum={"waiting","in_consultation","completed","cancelled"}, example="in_consultation")
+     *   )),
+     *   @OA\Response(response=200, description="Waiting room entry updated", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=404, description="Entrée non trouvée"),
+     *   @OA\Response(response=422, description="Validation error"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function update(Request $request, $id)
     {
         $user = $this->getCurrentUser();
@@ -196,6 +257,19 @@ class WaitingRoomController extends Controller
     }
 
 
+    /**
+     * @OA\Delete(
+     *   path="/waiting-room/{id}",
+     *   tags={"WaitingRoom"},
+     *   summary="Remove a waiting room entry",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Response(response=200, description="Entry removed", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=404, description="Entrée non trouvée"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function destroy($id)
     {
         $user = $this->getCurrentUser();

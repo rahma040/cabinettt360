@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use OpenApi\Annotations as OA;
 use App\Models\Appointment;
 use App\Models\Patient;
 use App\Models\DocumentMedical;
@@ -90,6 +91,18 @@ class PatientController extends Controller
         ]);
     }
 
+    /**
+     * @OA\Get(
+     *   path="/patient/profile",
+     *   tags={"Patient"},
+     *   summary="Get current patient profile",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="Profile retrieved successfully", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=403, description="Accès réservé aux patients")
+     * )
+     */
+
     public function patientAppointments()
     {
         $user = $this->getCurrentUser();
@@ -119,6 +132,19 @@ class PatientController extends Controller
             'appointments' => $appointments,
         ]);
     }
+
+    /**
+     * @OA\Get(
+     *   path="/patient/appointments",
+     *   tags={"Patient"},
+     *   summary="List appointments for current patient",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="Appointments list", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=403, description="Accès réservé aux patients"),
+     *   @OA\Response(response=404, description="Patient non trouvé")
+     * )
+     */
 
     public function storePatientAppointment(Request $request)
     {
@@ -183,6 +209,34 @@ class PatientController extends Controller
         return response()->json($appointment->load('patient:id,nom,prenom'), 201);
     }
 
+    /**
+     * @OA\Post(
+     *   path="/patient/appointments",
+     *   tags={"Patient","Appointment"},
+     *   summary="Request a new appointment (patient)",
+     *   security={{"bearerAuth":{}}},
+    *   @OA\RequestBody(
+    *     required=true,
+    *     @OA\MediaType(
+    *       mediaType="application/json",
+    *       @OA\Schema(
+    *         type="object",
+    *         required={"appointment_date","start_time","end_time"},
+    *         @OA\Property(property="appointment_date", type="string", format="date", description="YYYY-MM-DD", example="2026-06-15"),
+    *         @OA\Property(property="start_time", type="string", example="09:00", description="H:i"),
+    *         @OA\Property(property="end_time", type="string", example="09:30", description="H:i (after start_time)"),
+    *         @OA\Property(property="notes", type="string", description="Optional notes", example="Consultation for cough")
+    *       )
+    *     )
+    *   ),
+     *   @OA\Response(response=201, description="Appointment created", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=403, description="Accès réservé aux patients"),
+     *   @OA\Response(response=422, description="Validation error"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
+
 
     public function index()
     {
@@ -208,6 +262,18 @@ class PatientController extends Controller
         }
     }
 
+    /**
+     * @OA\Get(
+     *   path="/patients",
+     *   tags={"Patient"},
+     *   summary="List patients for the current doctor",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Response(response=200, description="List of patients", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=500, description="Erreur lors du chargement des patients")
+     * )
+     */
+
 
     public function store(Request $request)
     {
@@ -228,6 +294,28 @@ class PatientController extends Controller
             return response()->json(['error' => 'Erreur lors de la création du patient'], 500);
         }
     }
+
+    /**
+     * @OA\Post(
+     *   path="/patients",
+     *   tags={"Patient"},
+     *   summary="Create a new patient",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\RequestBody(
+     *     required=true,
+     *     @OA\JsonContent(
+     *       @OA\Property(property="nom", type="string"),
+     *       @OA\Property(property="prenom", type="string"),
+     *       @OA\Property(property="email", type="string", format="email"),
+     *       @OA\Property(property="phone", type="string"),
+     *       @OA\Property(property="date_naissance", type="string", format="date")
+     *     )
+     *   ),
+     *   @OA\Response(response=201, description="Patient created", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=500, description="Erreur lors de la création du patient")
+     * )
+     */
 
     public function show($id)
     {
@@ -262,6 +350,20 @@ class PatientController extends Controller
         }
     }
 
+    /**
+     * @OA\Get(
+     *   path="/patients/{id}",
+     *   tags={"Patient"},
+     *   summary="Get patient details",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Response(response=200, description="Patient details", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=404, description="Patient non trouvé"),
+     *   @OA\Response(response=500, description="Erreur lors du chargement du patient")
+     * )
+     */
+
 
     public function update(Request $request, $id)
     {
@@ -285,6 +387,21 @@ class PatientController extends Controller
             return response()->json(['error' => 'Erreur lors de la mise à jour du patient'], 500);
         }
     }
+
+    /**
+     * @OA\Put(
+     *   path="/patients/{id}",
+     *   tags={"Patient"},
+     *   summary="Update a patient",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\RequestBody(@OA\JsonContent(type="object")),
+     *   @OA\Response(response=200, description="Patient updated", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=404, description="Patient non trouvé"),
+     *   @OA\Response(response=500, description="Erreur lors de la mise à jour du patient")
+     * )
+     */
 
 
     public function destroy($id)
@@ -327,6 +444,20 @@ class PatientController extends Controller
             return response()->json(['error' => 'Erreur lors de la suppression du patient'], 500);
         }
     }
+
+    /**
+     * @OA\Delete(
+     *   path="/patients/{id}",
+     *   tags={"Patient"},
+     *   summary="Delete a patient",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Response(response=200, description="Patient supprimé avec succès"),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=404, description="Patient non trouvé"),
+     *   @OA\Response(response=500, description="Erreur lors de la suppression du patient")
+     * )
+     */
 
 
 
@@ -421,6 +552,35 @@ class PatientController extends Controller
         }
     }
 
+    /**
+     * @OA\Post(
+     *   path="/patients/{id}/documents",
+     *   tags={"Patient","Document"},
+     *   summary="Upload a document for a patient",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\RequestBody(
+     *     required=true,
+     *     @OA\MediaType(
+     *       mediaType="multipart/form-data",
+     *       @OA\Schema(type="object",
+     *         @OA\Property(property="document", type="string", format="binary"),
+     *         @OA\Property(property="titre", type="string"),
+     *         @OA\Property(property="type", type="string"),
+     *         @OA\Property(property="date_document", type="string", format="date"),
+     *         @OA\Property(property="notes", type="string")
+     *       )
+     *     )
+     *   ),
+     *   @OA\Response(response=201, description="Document uploaded", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=400, description="Aucun fichier trouvé dans la requête"),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=404, description="Patient non trouvé"),
+     *   @OA\Response(response=422, description="Validation error"),
+     *   @OA\Response(response=500, description="Server error")
+     * )
+     */
+
     public function viewDocument($id, $documentId)
     {
         $token = request()->query('token');
@@ -464,6 +624,21 @@ class PatientController extends Controller
         }
     }
 
+    /**
+     * @OA\Get(
+     *   path="/patients/{id}/documents/{documentId}/view",
+     *   tags={"Patient","Document"},
+     *   summary="View a patient's document (file response)",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Parameter(name="documentId", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Response(response=200, description="File response"),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=404, description="Fichier non trouvé"),
+     *   @OA\Response(response=500, description="Erreur lors de l'accès au document")
+     * )
+     */
+
     public function downloadDocument($id, $documentId)
     {
         $token = request()->query('token');
@@ -506,6 +681,21 @@ class PatientController extends Controller
         }
     }
 
+    /**
+     * @OA\Get(
+     *   path="/patients/{id}/documents/{documentId}/download",
+     *   tags={"Patient","Document"},
+     *   summary="Download a patient's document",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Parameter(name="documentId", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Response(response=200, description="File download"),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=404, description="Fichier non trouvé"),
+     *   @OA\Response(response=500, description="Erreur lors du téléchargement")
+     * )
+     */
+
     public function viewMyDocument($documentId)
     {
         $user = $this->getCurrentUser();
@@ -540,6 +730,20 @@ class PatientController extends Controller
         return response()->file($fullPath);
     }
 
+    /**
+     * @OA\Get(
+     *   path="/patient/documents/{documentId}/view",
+     *   tags={"Patient","Document"},
+     *   summary="Patient view their own document",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="documentId", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Response(response=200, description="File response"),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=403, description="Accès réservé aux patients"),
+     *   @OA\Response(response=404, description="Fichier non trouvé")
+     * )
+     */
+
     public function deleteDocument($id, $documentId)
     {
         $user = $this->getCurrentUser();
@@ -565,6 +769,21 @@ class PatientController extends Controller
             return response()->json(['error' => 'Erreur lors de la suppression'], 500);
         }
     }
+
+    /**
+     * @OA\Delete(
+     *   path="/patients/{id}/documents/{documentId}",
+     *   tags={"Patient","Document"},
+     *   summary="Delete a patient's document",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Parameter(name="documentId", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Response(response=200, description="Document supprimé"),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=404, description="Document non trouvé"),
+     *   @OA\Response(response=500, description="Erreur lors de la suppression")
+     * )
+     */
 
 
     public function addVisite(Request $request, $id)
@@ -642,6 +861,28 @@ class PatientController extends Controller
         }
     }
 
+    /**
+     * @OA\Post(
+     *   path="/patients/{id}/visites",
+     *   tags={"Patient","Prescription"},
+     *   summary="Add a visite (medical record) for a patient",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\RequestBody(@OA\JsonContent(
+     *     @OA\Property(property="date_visite", type="string", format="date"),
+     *     @OA\Property(property="motif", type="string"),
+     *     @OA\Property(property="diagnostic", type="string"),
+     *     @OA\Property(property="prescription_texte", type="string"),
+     *     @OA\Property(property="montant", type="number", format="float"),
+     *     @OA\Property(property="statut_paiement", type="string")
+     *   )),
+     *   @OA\Response(response=201, description="Visite created", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=401, description="Non authentifié"),
+     *   @OA\Response(response=404, description="Patient non trouvé"),
+     *   @OA\Response(response=500, description="Erreur lors de l'ajout de la visite")
+     * )
+     */
+
     public function updateVisite(Request $request, $id, $visiteId)
     {
         $user = $this->getCurrentUser();
@@ -702,6 +943,21 @@ class PatientController extends Controller
         }
     }
 
+    /**
+     * @OA\Put(
+     *   path="/patients/{id}/visites/{visiteId}",
+     *   tags={"Patient","Prescription"},
+     *   summary="Update a visite",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Parameter(name="visiteId", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\RequestBody(@OA\JsonContent(type="object")),
+     *   @OA\Response(response=200, description="Visite updated", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=404, description="Patient ou visite non trouvé"),
+     *   @OA\Response(response=500, description="Erreur lors de la mise à jour")
+     * )
+     */
+
     public function deleteVisite($id, $visiteId)
     {
         $user = $this->getCurrentUser();
@@ -731,6 +987,20 @@ class PatientController extends Controller
             return response()->json(['error' => 'Erreur lors de la suppression'], 500);
         }
     }
+
+    /**
+     * @OA\Delete(
+     *   path="/patients/{id}/visites/{visiteId}",
+     *   tags={"Patient","Prescription"},
+     *   summary="Delete a visite",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Parameter(name="visiteId", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Response(response=200, description="Visite supprimée"),
+     *   @OA\Response(response=404, description="Patient ou visite non trouvé"),
+     *   @OA\Response(response=500, description="Erreur lors de la suppression")
+     * )
+     */
 
     public function viewPrescription($id, $visiteId, $fileIndex)
     {
@@ -777,6 +1047,21 @@ class PatientController extends Controller
         }
     }
 
+    /**
+     * @OA\Get(
+     *   path="/patients/{id}/visites/{visiteId}/prescription/{fileIndex}/view",
+     *   tags={"Patient","Prescription"},
+     *   summary="View a prescription file",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Parameter(name="visiteId", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Parameter(name="fileIndex", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Response(response=200, description="File response"),
+     *   @OA\Response(response=404, description="Fichier non trouvé"),
+     *   @OA\Response(response=500, description="Erreur lors de l'accès au fichier")
+     * )
+     */
+
     public function downloadPrescription($id, $visiteId, $fileIndex)
     {
         $token = request()->query('token');
@@ -821,6 +1106,21 @@ class PatientController extends Controller
             return response()->json(['error' => 'Erreur lors du téléchargement'], 500);
         }
     }
+
+    /**
+     * @OA\Get(
+     *   path="/patients/{id}/visites/{visiteId}/prescription/{fileIndex}/download",
+     *   tags={"Patient","Prescription"},
+     *   summary="Download a prescription file",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Parameter(name="visiteId", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Parameter(name="fileIndex", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Response(response=200, description="File download"),
+     *   @OA\Response(response=404, description="Fichier non trouvé"),
+     *   @OA\Response(response=500, description="Erreur lors du téléchargement")
+     * )
+     */
 
     public function addPrescriptionFile(Request $request, $id, $visiteId)
     {
@@ -873,4 +1173,21 @@ class PatientController extends Controller
             return response()->json(['error' => 'Erreur lors de l\'ajout du fichier'], 500);
         }
     }
+
+    /**
+     * @OA\Post(
+     *   path="/patients/{id}/visites/{visiteId}/prescription-file",
+     *   tags={"Patient","Prescription"},
+     *   summary="Add a prescription file to a visite",
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Parameter(name="visiteId", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\RequestBody(@OA\MediaType(mediaType="multipart/form-data", @OA\Schema(type="object",
+     *     @OA\Property(property="prescription_file", type="string", format="binary")
+     *   ))),
+     *   @OA\Response(response=200, description="Visite updated with new prescription file", @OA\JsonContent(type="object")),
+     *   @OA\Response(response=404, description="Patient ou visite non trouvé"),
+     *   @OA\Response(response=500, description="Erreur lors de l'ajout du fichier")
+     * )
+     */
 }
