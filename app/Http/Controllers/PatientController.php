@@ -506,6 +506,40 @@ class PatientController extends Controller
         }
     }
 
+    public function viewMyDocument($documentId)
+    {
+        $user = $this->getCurrentUser();
+
+        if (!$user) {
+            return response()->json(['error' => 'Non authentifié'], 401);
+        }
+
+        if ($user->role !== 'patient') {
+            return response()->json(['error' => 'Accès réservé aux patients'], 403);
+        }
+
+        $patient = $this->getPatientForCurrentUser($user);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient non trouvé'], 404);
+        }
+
+        $document = DocumentMedical::where('patient_id', $patient->id)->findOrFail($documentId);
+
+        if (!$document->fichier_path) {
+            return response()->json(['error' => 'Chemin du fichier non trouvé'], 404);
+        }
+
+        $fullPath = storage_path('app/public/' . $document->fichier_path);
+
+        if (!file_exists($fullPath)) {
+            Log::error('Fichier non trouvé: ' . $fullPath);
+            return response()->json(['error' => 'Fichier non trouvé sur le serveur'], 404);
+        }
+
+        return response()->file($fullPath);
+    }
+
     public function deleteDocument($id, $documentId)
     {
         $user = $this->getCurrentUser();

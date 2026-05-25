@@ -185,7 +185,7 @@ const formatTimeDetail = (date) => {
   return d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
 };
 
-function MessengerInterface({ navItems, isDoctor, userRoleLabel, roleInitial, spaceLabel, user }) {
+function MessengerInterface({ navItems, isDoctor, userRoleLabel, roleInitial, spaceLabel, user, embedded = false, showSidebar = true }) {
   const navigate = useNavigate();
   const [contacts, setContacts] = useState([]);
   const [selectedContact, setSelectedContact] = useState(null);
@@ -409,83 +409,87 @@ function MessengerInterface({ navItems, isDoctor, userRoleLabel, roleInitial, sp
     : [];
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "var(--surface)" }}>
+    <div className={embedded ? "flex h-full min-h-0 overflow-hidden" : "flex h-screen overflow-hidden"} style={{ background: "var(--surface)" }}>
       <style>{G}</style>
       <FontInjector />
 
-      <button
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="lg:hidden fixed left-0 top-1/2 -translate-y-1/2 z-50 w-10 h-10 flex items-center justify-center text-white rounded-r-xl db-toggle"
-      >
-        {sidebarOpen ? <FaTimes size={16} /> : <FaBars size={16} />}
-      </button>
-
-      <aside
-        className={`fixed inset-y-0 left-0 transform ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } lg:relative lg:translate-x-0 transition-transform duration-300 z-40 w-64 flex flex-col db-sidebar`}
-        style={{ background: "linear-gradient(180deg,var(--navy) 0%,var(--navy-mid) 60%,var(--navy-light) 100%)" }}
-      >
-        <div className="px-6 pt-8 pb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center db-logo-ring flex-shrink-0">
-              <FaStethoscope className="text-white text-base" />
-            </div>
-            <div>
-              <h1 className="text-white text-lg" style={{ fontWeight: 800, letterSpacing: "-0.02em" }}>Cabi Doc</h1>
-              <p className="text-xs" style={{ color: "rgba(255,255,255,.38)" }}>{spaceLabel}</p>
-            </div>
-          </div>
-        </div>
-
-        <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
-          {navItems.map((item) => (
-            <a
-              key={item.to}
-              href={item.to}
-              onClick={() => setSidebarOpen(false)}
-              className={`db-nav-link flex items-center gap-3 px-4 py-3 rounded-xl ${item.active ? "active" : ""}`}
-              style={{ fontWeight: item.active ? 600 : 500, cursor: "pointer", textDecoration: "none" }}
-            >
-              <span style={{ opacity: item.active ? 1 : 0.65 }}>{item.icon}</span>
-              <span>{item.label}</span>
-            </a>
-          ))}
-        </nav>
-
-        <div className="p-4 m-3 rounded-2xl" style={{ background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.08)" }}>
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm flex-shrink-0 db-logo-ring" style={{ fontWeight: 700 }}>
-              {user?.name?.charAt(0) || roleInitial}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-white text-sm truncate" style={{ fontWeight: 600 }}>
-                {isDoctor ? `Dr. ${user?.name}` : user?.name}
-              </p>
-              <p className="text-xs" style={{ color: "rgba(255,255,255,.38)" }}>{userRoleLabel}</p>
-            </div>
-          </div>
+      {showSidebar && (
+        <>
           <button
-            onClick={() => {
-              localStorage.removeItem("token");
-              localStorage.removeItem("user");
-              localStorage.removeItem("userIntegrityHash");
-              navigate("/login");
-            }}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition-all hover:bg-red-500/20"
-            style={{ color: "rgba(255,255,255,.5)", fontWeight: 500, border: "none", background: "transparent", cursor: "pointer" }}
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="lg:hidden fixed left-0 top-1/2 -translate-y-1/2 z-50 w-10 h-10 flex items-center justify-center text-white rounded-r-xl db-toggle"
           >
-            <FaSignOutAlt size={12} /> Déconnexion
+            {sidebarOpen ? <FaTimes size={16} /> : <FaBars size={16} />}
           </button>
-        </div>
-      </aside>
 
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-30 lg:hidden"
-          style={{ background: "rgba(6,13,31,.5)", backdropFilter: "blur(4px)" }}
-          onClick={() => setSidebarOpen(false)}
-        />
+          <aside
+            className={`fixed inset-y-0 left-0 transform ${
+              sidebarOpen ? "translate-x-0" : "-translate-x-full"
+            } lg:relative lg:translate-x-0 transition-transform duration-300 z-40 w-64 flex flex-col db-sidebar`}
+            style={{ background: "linear-gradient(180deg,var(--navy) 0%,var(--navy-mid) 60%,var(--navy-light) 100%)" }}
+          >
+            <div className="px-6 pt-8 pb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center db-logo-ring flex-shrink-0">
+                  <FaStethoscope className="text-white text-base" />
+                </div>
+                <div>
+                  <h1 className="text-white text-lg" style={{ fontWeight: 800, letterSpacing: "-0.02em" }}>Cabi Doc</h1>
+                  <p className="text-xs" style={{ color: "rgba(255,255,255,.38)" }}>{spaceLabel}</p>
+                </div>
+              </div>
+            </div>
+
+            <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
+              {navItems.map((item) => (
+                <a
+                  key={item.to}
+                  href={item.to}
+                  onClick={() => setSidebarOpen(false)}
+                  className={`db-nav-link flex items-center gap-3 px-4 py-3 rounded-xl ${item.active ? "active" : ""}`}
+                  style={{ fontWeight: item.active ? 600 : 500, cursor: "pointer", textDecoration: "none" }}
+                >
+                  <span style={{ opacity: item.active ? 1 : 0.65 }}>{item.icon}</span>
+                  <span>{item.label}</span>
+                </a>
+              ))}
+            </nav>
+
+            <div className="p-4 m-3 rounded-2xl" style={{ background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.08)" }}>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm flex-shrink-0 db-logo-ring" style={{ fontWeight: 700 }}>
+                  {user?.name?.charAt(0) || roleInitial}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-sm truncate" style={{ fontWeight: 600 }}>
+                    {isDoctor ? `Dr. ${user?.name}` : user?.name}
+                  </p>
+                  <p className="text-xs" style={{ color: "rgba(255,255,255,.38)" }}>{userRoleLabel}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  localStorage.removeItem("token");
+                  localStorage.removeItem("user");
+                  localStorage.removeItem("userIntegrityHash");
+                  navigate("/login");
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition-all hover:bg-red-500/20"
+                style={{ color: "rgba(255,255,255,.5)", fontWeight: 500, border: "none", background: "transparent", cursor: "pointer" }}
+              >
+                <FaSignOutAlt size={12} /> Déconnexion
+              </button>
+            </div>
+          </aside>
+
+          {sidebarOpen && (
+            <div
+              className="fixed inset-0 z-30 lg:hidden"
+              style={{ background: "rgba(6,13,31,.5)", backdropFilter: "blur(4px)" }}
+              onClick={() => setSidebarOpen(false)}
+            />
+          )}
+        </>
       )}
 
       <main style={{ flex: 1, display: "flex", overflow: "hidden", background: "#fff" }}>

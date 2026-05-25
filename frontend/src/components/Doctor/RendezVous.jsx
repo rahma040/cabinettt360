@@ -267,6 +267,7 @@ function RendezVous() {
   const [expandedDays, setExpandedDays] = useState({});
   const [itemsPerPage] = useState(5);
   const [error, setError] = useState(null);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
   const integrityInterval = useRef(null);
 
   const getToken = () => localStorage.getItem("token");
@@ -394,8 +395,28 @@ function RendezVous() {
     } catch (err) {
       console.error("Failed to fetch appointments:", err);
       setError("Erreur de connexion au serveur");
+    } finally {
+      await fetchPendingRequests();
     }
   };
+
+  const fetchPendingRequests = async () => {
+    try {
+      const response = await api.get("/appointments");
+      setPendingRequestsCount((Array.isArray(response.data) ? response.data : []).filter((item) => item.request_status === "pending").length);
+    } catch (err) {
+      console.error("Failed to fetch pending requests:", err);
+    }
+  };
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+
+    fetchPendingRequests();
+    const interval = setInterval(fetchPendingRequests, 15000);
+    return () => clearInterval(interval);
+  }, []);
 
   const getStatusBadge = (status) => {
     if (status === "completed")
@@ -793,6 +814,23 @@ function RendezVous() {
                   <FaChevronRight size={13} />
                 </button>
               </div>
+              <button
+                onClick={() => navigate("/appointment-requests")}
+                className="relative flex items-center gap-2 px-4 py-2.5 rounded-xl btn-ghost text-sm"
+                title="Demandes des rendez-vous"
+                style={{ fontWeight: 600 }}
+              >
+                <FaBell size={13} style={{ color: "#64748B" }} />
+                <span>Demandes des rendez-vous</span>
+                {pendingRequestsCount > 0 && (
+                  <span
+                    className="inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-bold text-white"
+                    style={{ background: "linear-gradient(135deg, #EF4444, #DC2626)" }}
+                  >
+                    {pendingRequestsCount}
+                  </span>
+                )}
+              </button>
               <button
                 onClick={() => setShowAddModal(true)}
                 className="btn-violet px-4 py-2.5 rounded-xl text-sm flex items-center gap-2"

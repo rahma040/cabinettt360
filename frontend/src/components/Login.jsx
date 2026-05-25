@@ -39,16 +39,18 @@ const Login = () => {
             navigate("/admindb");
             break;
           case "medecin":
+          case "doctor":
             navigate("/docdb");
             break;
           case "secretaire":
+          case "secretary":
             navigate("/secretariatdb");
             break;
           case "patient":
             navigate("/patientdb");
             break;
           default:
-            navigate("/dashboard");
+            navigate("/accessdenied");
         }
       } else {
         setError("Réponse du serveur invalide");

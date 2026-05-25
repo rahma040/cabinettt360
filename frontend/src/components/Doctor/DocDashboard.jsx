@@ -339,6 +339,7 @@ const DoctorDashboard = () => {
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
 
   const integrityInterval = useRef(null);
+  const loadingWatchdog = useRef(null);
 
   const navItems = [
     { to: "/docdb", icon: <FaHome />, label: "Tableau de bord", active: true  },
@@ -368,14 +369,19 @@ const DoctorDashboard = () => {
     const userData = localStorage.getItem("user");
     if (!token || !userData) { navigate("/login"); return; }
     const parsedUser = JSON.parse(userData);
-    if (parsedUser.role !== "medecin") { navigate("/dashboard"); return; }
+    if (parsedUser.role !== "medecin" && parsedUser.role !== "doctor") { navigate("/accessdenied"); return; }
     setUser(parsedUser);
 
     performIntegrityCheck(navigate, setError, true)
       .then(() => {
         fetchDashboardData();
+        setLoading(false);
       })
       .catch(() => setLoading(false));
+
+    loadingWatchdog.current = setTimeout(() => {
+      setLoading(false);
+    }, 5000);
 
     integrityInterval.current = setInterval(() => {
       performIntegrityCheck(navigate, setError, false);
@@ -390,6 +396,7 @@ const DoctorDashboard = () => {
 
     return () => {
       if (integrityInterval.current) clearInterval(integrityInterval.current);
+      if (loadingWatchdog.current) clearTimeout(loadingWatchdog.current);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [navigate]);
@@ -408,7 +415,6 @@ const DoctorDashboard = () => {
         api.get("/patients"),
         api.get("/waiting-room"),
         api.get("/prescription-templates"),
-        api.get("/appointments/pending-requests").catch(() => ({ data: [] })),
       ]);
 
       setOverview(overviewRes.data);
@@ -427,7 +433,7 @@ const DoctorDashboard = () => {
       setRecentPatients(patients.slice(0, 5));
       setWaitingRoom(Array.isArray(waitingRoomRes.data) ? waitingRoomRes.data : []);
       setPrescriptionTemplates(Array.isArray(templatesRes.data) ? templatesRes.data : []);
-      setPendingRequestsCount((Array.isArray(pendingRequestsRes.data) ? pendingRequestsRes.data : []).length);
+      setPendingRequestsCount(appointments.filter((item) => item.request_status === "pending").length);
     } catch (err) {
       console.error("Dashboard fetch error:", err);
       setError("Impossible de charger les données. Vérifiez votre connexion.");
@@ -435,6 +441,33 @@ const DoctorDashboard = () => {
       setLoading(false);
     }
   };
+
+  const fetchPendingRequests = async (token) => {
+    try {
+      const response = await api.get("/appointments", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const pending = (Array.isArray(response.data) ? response.data : []).filter((item) => item.request_status === "pending");
+      setPendingRequestsCount(pending.length);
+    } catch (error) {
+      console.error("Error fetching pending requests:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (!user) return;
+
+    const refreshPendingRequests = () => {
+      const token = localStorage.getItem("token");
+      if (token) {
+        fetchPendingRequests(token);
+      }
+    };
+
+    refreshPendingRequests();
+    const interval = setInterval(refreshPendingRequests, 15000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   const handleContactSubmit = async (e) => {
     e.preventDefault();

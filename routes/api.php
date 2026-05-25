@@ -40,6 +40,7 @@ Route::middleware(['jwt.auth'])->group(function () {
         Route::get('/patient/profile', [PatientController::class, 'profile']);
         Route::get('/patient/appointments', [PatientController::class, 'patientAppointments']);
         Route::post('/patient/appointments', [PatientController::class, 'storePatientAppointment']);
+        Route::get('/patient/documents/{documentId}/view', [PatientController::class, 'viewMyDocument']);
     });
 
 

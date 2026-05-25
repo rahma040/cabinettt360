@@ -4,6 +4,7 @@ import axios from "axios";
 import {
   FaHome, 
   FaUserInjured,
+  FaUserPlus,
   FaCalendarCheck, 
   FaCog, 
   FaSignOutAlt, 

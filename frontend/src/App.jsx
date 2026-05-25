@@ -43,12 +43,15 @@ import DoctorTasks from "./components/Doctor/DoctorTasks";
 import DoctorTutorial from "./components/Doctor/DoctorTutorial";
 import DoctorCommunication from "./components/Doctor/DoctorCommunication";
 import DoctorSettings from "./components/Doctor/DoctorSettings";
+import AppointmentRequestsPage from "./components/AppointmentRequestsPage";
 
 function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const [, setAuthTick] = useState(0);
+
+  const isLoggedIn = !!localStorage.getItem("token");
 
   useEffect(() => {
     AOS.init();
@@ -58,28 +61,30 @@ function App() {
     setMobileMenuOpen(false);
   }, [location]);
 
-  // Check authentication status
-  const checkAuth = () => {
-    const token = localStorage.getItem("token");
-    setIsLoggedIn(!!token);
-  };
-
-  // Run on mount and on every route change (because login redirects)
   useEffect(() => {
-    checkAuth();
+    setAuthTick((value) => value + 1);
   }, [location.pathname]);
 
-  // Also listen to storage events (for cross-tab synchronization)
   useEffect(() => {
-    window.addEventListener("storage", checkAuth);
-    return () => window.removeEventListener("storage", checkAuth);
+    const syncAuth = () => setAuthTick((value) => value + 1);
+    window.addEventListener("storage", syncAuth);
+    window.addEventListener("focus", syncAuth);
+    document.addEventListener("visibilitychange", syncAuth);
+    window.addEventListener("authchange", syncAuth);
+
+    return () => {
+      window.removeEventListener("storage", syncAuth);
+      window.removeEventListener("focus", syncAuth);
+      document.removeEventListener("visibilitychange", syncAuth);
+      window.removeEventListener("authchange", syncAuth);
+    };
   }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     localStorage.removeItem("userIntegrityHash");
-    setIsLoggedIn(false);
+    window.dispatchEvent(new Event("authchange"));
     navigate("/login");
   };
 
@@ -212,6 +217,7 @@ function App() {
           <Route path="/seccreatepatient" element={<DoctorPatientsAccounts />} />
           <Route path="/patients" element={<Patients />} />
           <Route path="/rendezvous" element={<RendezVous />} />
+          <Route path="/appointment-requests" element={<AppointmentRequestsPage />} />
           <Route path="/prescription" element={<PrescriptionTemplates />} />
           <Route path="/docwaiting" element={<DoctorWaitingRoom />} />
           <Route path="/docstats" element={<DoctorStatistics />} />

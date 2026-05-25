@@ -30,7 +30,7 @@ class AppointmentController extends Controller
 
         $doctorId = $this->getDoctorId($user);
 
-        $query = Appointment::with('patient:id,nom,prenom')
+        $query = Appointment::with('patient:id,nom,prenom,email')
             ->where('doctor_id', $doctorId);
 
 
@@ -106,7 +106,7 @@ class AppointmentController extends Controller
 
         $doctorId = $this->getDoctorId($user);
 
-        $appointment = Appointment::with('patient:id,nom,prenom')
+        $appointment = Appointment::with('patient:id,nom,prenom,email')
             ->where('doctor_id', $doctorId)
             ->findOrFail($id);
 
@@ -137,7 +137,7 @@ class AppointmentController extends Controller
 
         $appointment->update($validated);
 
-        return response()->json($appointment->load('patient:id,nom,prenom'));
+        return response()->json($appointment->load('patient:id,nom,prenom,email'));
     }
 
 
@@ -192,7 +192,7 @@ class AppointmentController extends Controller
 
         $appointment->update(['request_status' => 'accepted']);
 
-        return response()->json(['message' => 'Appointment request accepted', 'appointment' => $appointment->load('patient:id,nom,prenom')]);
+        return response()->json(['message' => 'Appointment request accepted', 'appointment' => $appointment->load('patient:id,nom,prenom,email')]);
     }
 
     public function denyRequest($id)

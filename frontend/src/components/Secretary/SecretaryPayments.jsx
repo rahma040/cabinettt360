@@ -11,6 +11,7 @@ import {
   FaSignOutAlt,
   FaBell,
   FaUserClock,
+  FaUserPlus,
   FaMoneyBillWave,
   FaPrint,
   FaCheck,

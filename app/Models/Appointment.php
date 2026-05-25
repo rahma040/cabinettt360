@@ -16,6 +16,7 @@ class Appointment extends Model
         'start_time',
         'end_time',
         'status',
+        'request_status',
         'notes',
     ];
 

@@ -32,8 +32,14 @@ const NotificationModal = ({
   const fetchPendingRequests = async () => {
     setLoading(true);
     try {
-      const response = await api.get("/appointments/pending-requests");
-      setNotifications(response.data);
+      const response = await api.get("/appointments");
+      const pending = (Array.isArray(response.data) ? response.data : []).filter((item) => item.request_status === "pending");
+      pending.sort((a, b) => {
+        const dateA = `${a.appointment_date} ${a.start_time || "00:00"}`;
+        const dateB = `${b.appointment_date} ${b.start_time || "00:00"}`;
+        return new Date(dateB) - new Date(dateA);
+      });
+      setNotifications(pending);
     } catch (err) {
       console.error("Error fetching pending requests:", err);
     } finally {

@@ -341,13 +341,13 @@ function SecDashboard() {
 
   const fetchPendingRequests = async (token) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/appointments/pending-requests`, {
+      const response = await fetch(`${API_BASE_URL}/appointments`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (await handleApiError(response)) return;
       if (!response.ok) return;
       const data = await response.json();
-      setPendingRequestsCount(data.length || 0);
+      setPendingRequestsCount((Array.isArray(data) ? data : []).filter((item) => item.request_status === "pending").length);
     } catch (error) {
       console.error("Error fetching pending requests:", error);
     }
@@ -391,6 +391,21 @@ function SecDashboard() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!user) return;
+
+    const refreshNotifications = () => {
+      const token = getToken();
+      if (!token) return;
+      fetchPendingRequests(token);
+      fetchMessageNotifications();
+    };
+
+    refreshNotifications();
+    const interval = setInterval(refreshNotifications, 15000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   useEffect(() => {
     AOS.init({ duration: 800, once: true });
